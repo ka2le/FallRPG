@@ -46,6 +46,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       pages: write
       id-token: write
@@ -56,3 +57,6 @@ jobs:
       - name: Publish GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # New Pages sites can spend more than ten minutes in GitHub's queue.
+          timeout: 1800000
