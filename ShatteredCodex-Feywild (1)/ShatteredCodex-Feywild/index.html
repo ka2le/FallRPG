@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Shattered Codex — Feywild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fey.css">
+<style>
+#loadWrap{margin-top:18px}
+.lbar{background:#ffffff18;border-radius:3px;overflow:hidden;margin-top:10px;width:min(460px,80vw);margin-left:auto;margin-right:auto}
+#loadBar{height:100%;width:0;background:linear-gradient(90deg,#b8ffe8,#c7a4ff,#ffb0e0);box-shadow:0 0 12px #c7a4ff;transition:width .25s}
+</style>
+</head>
+<body>
+<div id="game"></div><div id="uwTint"></div>
+<div id="touchLayer"></div>
+
+<div id="hud" class="hidden">
+  <div id="hurt"></div>
+  <div id="crosshair"><i></i></div>
+  <div id="floaters"></div>
+  <div id="compass"></div><div id="compassNeedle"></div>
+  <div id="region"><div class="name"></div><div class="sub"></div></div>
+  <div id="topRight">
+    <div id="mapWrap"><canvas id="minimap" width="180" height="180"></canvas><div id="clock"></div></div>
+    <div id="feyClock"></div>
+    <div id="zoneLine"></div>
+    <div id="tracker"></div>
+  </div>
+  <div id="menuBtns">
+    <button data-open="inv" title="Character &amp; inventory (I)">🎒</button>
+    <button data-open="book" title="Spellbook (B)">📖</button>
+    <button data-open="quests" title="Quest journal (J)">📜</button>
+    <button data-open="map" title="Map (M)">🗺️</button>
+    <button data-open="pause" title="Menu (Esc)">☰</button>
+    <button id="btnLearn" title="Learn a new spell (B)" style="display:none">✨ Learn spell <b></b></button>
+  </div>
+  <div id="targetFrame"></div>
+  <div id="toast"></div>
+  <div id="prompt"></div>
+  <div id="log"></div>
+  <div id="bottom">
+    <div id="buffs"></div>
+    <div id="bars">
+      <div class="bar hp" id="hpBar"><div class="fill"></div><div class="txt"></div></div>
+      <div class="bar mp" id="mpBar"><div class="fill"></div><div class="txt"></div></div>
+    </div>
+    <div id="hotbar"></div>
+    <div class="bar xp" id="xpBar"><div class="fill"></div><div class="txt"></div></div>
+  </div>
+  <div id="potions">
+    <button id="btnHp" title="Healing potion (Q)"><span class="pe">🍷</span><b>0</b><i>Q</i></button>
+    <button id="btnMp" title="Mana potion (R)"><span class="pe">🧪</span><b>0</b><i>R</i></button>
+  </div>
+  <div id="mobileBtns">
+    <button id="btnUse">✋</button>
+    <button id="btnJump">⤒</button>
+    <button id="btnUp">▲</button>
+    <button id="btnDown">▼</button>
+  </div>
+  <div id="joyBase"><div id="joyKnob"></div></div>
+</div>
+
+<div id="overlay" class="hidden"><div id="panel"></div></div>
+<div id="tip"></div>
+<div id="ghost"></div>
+
+<div id="screen">
+  <div class="title-card">
+    <div class="t-kicker">A wizard's tale in the Feywild</div>
+    <h1>The Shattered Codex</h1>
+    <div class="t-rule"></div>
+    <div id="titleOpts">
+      <label>Graphics
+        <select id="quality">
+          <option value="low">Low — gentle on laptops</option>
+          <option value="medium">Medium</option>
+          <option value="high" selected>High — recommended</option>
+          <option value="ultra">Ultra — for mighty GPUs</option>
+        </select>
+      </label>
+      <label>World seed (new game) <input id="seed" type="text" spellcheck="false" value="codex"></label>
+    </div>
+    <div id="titleBtns" style="display:flex">
+      <button id="btnContinue" style="display:none">Continue</button>
+      <button id="btnNew">New Game</button>
+    </div>
+    <div id="loadWrap" style="display:none"><div id="loadText">Opening the way…</div><div class="lbar"><div id="loadBar"></div></div></div>
+    <div id="titleHelp"></div>
+  </div>
+</div>
+<div id="errBox"></div>
+
+<script>
+  // compass strip (2px per degree)
+  (function(){
+    const c = document.createElement('canvas'); c.width = 720; c.height = 26;
+    const g = c.getContext('2d');
+    g.font = '600 15px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const L = {0:'N',45:'NE',90:'E',135:'SE',180:'S',225:'SW',270:'W',315:'NW'};
+    for (let d = 0; d < 360; d += 15) {
+      const x = d * 2;
+      if (L[d]) { g.fillStyle = d % 90 === 0 ? '#f3d98a' : '#ffffffaa'; g.fillText(L[d], x, 13); }
+      else { g.fillStyle = '#ffffff55'; g.fillRect(x - 0.5, 8, 1, 10); }
+    }
+    document.getElementById('compass').style.backgroundImage = 'url(' + c.toDataURL() + ')';
+  })();
+</script>
+<script src="game.js"></script>
+</body>
+</html>

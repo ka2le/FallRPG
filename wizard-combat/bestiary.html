@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bestiary · rig preview</title>
+<style>
+  body{margin:0;background:#16242a;color:#d9e2d6;font:12px Inter,system-ui,sans-serif}
+  .row{display:flex;align-items:end;gap:6px;padding:14px 18px;border-bottom:1px solid #ffffff10}
+  .row h2{writing-mode:vertical-rl;transform:rotate(180deg);font:500 14px Georgia;margin:0 8px 0 0;color:#e7d7a8;align-self:center}
+  .cell{width:210px;text-align:center}
+  .stage{height:210px;border-radius:8px;background:radial-gradient(ellipse at 50% 92%,#00000044 0 18%,transparent 19%),linear-gradient(#6d8790,#9fb39f 70%,#5f7b52 71%,#4f6a45);display:grid;place-items:end center;overflow:hidden}
+  .stage svg{width:200px;height:200px;display:block}
+  .cell small{display:block;margin-top:6px;color:#9fb1a8;letter-spacing:1px;text-transform:uppercase;font-size:9px}
+  .controls{padding:12px 18px;display:flex;gap:8px}button{background:#24383c;color:#e6dcbc;border:1px solid #e6dcbc33;border-radius:5px;padding:6px 10px;cursor:pointer}
+</style></head>
+<body>
+<div class="controls"><button id="pause">Pause</button><span id="info"></span></div>
+<div id="rows"></div>
+<script type="module">
+  import {MONSTER_ART} from '/src/monsters/index.js';
+  import {mountSvg,STATE} from '/src/monsters/rig.js';
+  // Every state the game feeds a rig. Each preview loops its state so the animation reads clearly.
+  const STATES={
+    idle:(s,t)=>{},
+    move:(s,t,def)=>{s.move=1;s.phase=t*(def.stride||3)*(def.previewSpeed||4);},
+    windup:(s,t)=>{const k=t%1.6;s.windup=Math.min(1,k/.45);s.attack=k>.45?Math.max(0,1-(k-.45)/.35):0;if(k>.45)s.windup=0;},
+    attack:(s,t)=>{const k=t%.9;s.attack=Math.max(0,1-k/.35);},
+    hurt:(s,t)=>{const k=t%1.1;s.hurt=Math.max(0,1-k/.3);},
+    stun:(s,t)=>{s.stun=1;},
+    dodge:(s,t)=>{const k=t%1.4;s.dodge=k<.4?Math.sin(k/.4*Math.PI):0;},
+    death:(s,t)=>{const k=t%2.4;s.dead=Math.min(1,k/1);},
+  };
+  const views=[];
+  for(const [type,def] of Object.entries(MONSTER_ART)){
+    const row=document.createElement('div');row.className='row';row.innerHTML=`<h2>${def.name}</h2>`;
+    for(const [name,fn] of Object.entries(STATES)){const cell=document.createElement('div');cell.className='cell';cell.innerHTML=`<div class="stage"></div><small>${name}</small>`;row.append(cell);
+      const live=mountSvg(def,cell.querySelector('.stage'));views.push({live,fn,def,seed:Math.random()*10});}
+    document.getElementById('rows').append(row);
+  }
+  let paused=false,clock=0,last=performance.now();
+  document.getElementById('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Play':'Pause';};
+  window.setClock=t=>{clock=t;paused=true;draw();};
+  function draw(){for(const v of views){const s=STATE();s.t=clock+v.seed*0;s.seed=v.seed;v.fn(s,clock,v.def);v.live.update(s);}}
+  function frame(now){if(!paused)clock+=(now-last)/1000;last=now;draw();requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script>
+</body></html>

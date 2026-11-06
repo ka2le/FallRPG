@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Shattered Codex</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game"></div><div id="uwTint"></div>
+<div id="touchLayer"></div>
+
+<div id="hud" class="hidden">
+  <div id="hurt"></div>
+  <div id="crosshair"><i></i></div>
+  <div id="floaters"></div>
+  <div id="topRight">
+    <div id="mapWrap"><canvas id="minimap" width="180" height="180"></canvas><div id="clock">☀️</div></div>
+    <div id="zoneLine"></div>
+    <div id="tracker"></div>
+  </div>
+  <div id="menuBtns">
+    <button data-open="inv" title="Character &amp; inventory (I)">🎒</button>
+    <button data-open="book" title="Spellbook (B)">📖</button>
+    <button data-open="quests" title="Quest journal (J)">📜</button>
+    <button data-open="map" title="Map (M)">🗺️</button>
+    <button data-open="pause" title="Menu (Esc)">☰</button>
+    <button id="btnLearn" title="Learn a new spell (B)" style="display:none">✨ Learn spell <b></b></button>
+  </div>
+  <div id="targetFrame"></div>
+  <div id="toast"></div>
+  <div id="prompt"></div>
+  <div id="log"></div>
+  <div id="bottom">
+    <div id="buffs"></div>
+    <div id="bars">
+      <div class="bar hp" id="hpBar"><div class="fill"></div><div class="txt"></div></div>
+      <div class="bar mp" id="mpBar"><div class="fill"></div><div class="txt"></div></div>
+    </div>
+    <div id="hotbar"></div>
+    <div class="bar xp" id="xpBar"><div class="fill"></div><div class="txt"></div></div>
+  </div>
+  <div id="potions">
+    <button id="btnHp" title="Healing potion (Q)"><span class="pe">🍷</span><b>0</b><i>Q</i></button>
+    <button id="btnMp" title="Mana potion (R)"><span class="pe">🧪</span><b>0</b><i>R</i></button>
+  </div>
+  <div id="mobileBtns">
+    <button id="btnUse">✋</button>
+    <button id="btnJump">⤒</button>
+    <button id="btnUp">▲</button>
+    <button id="btnDown">▼</button>
+  </div>
+  <div id="joyBase"><div id="joyKnob"></div></div>
+</div>
+
+<div id="overlay" class="hidden"><div id="panel"></div></div>
+<div id="tip"></div>
+<div id="ghost"></div>
+
+<div id="screen">
+  <div class="title-card">
+    <div class="t-kicker">A wizard's tale</div>
+    <h1>The Shattered Codex</h1>
+    <div class="t-rule"></div>
+    <div id="loadText">Preparing the world…</div>
+    <div id="titleBtns" style="display:none">
+      <button id="btnContinue">Continue</button>
+      <button id="btnNew">New Game</button>
+    </div>
+    <div id="titleHelp"></div>
+  </div>
+</div>
+<div id="errBox"></div>
+
+<script src="js/three.min.js"></script>
+<script>THREE.ColorManagement.enabled = false;</script>
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/world.js"></script>
+<script src="js/items.js"></script>
+<script src="js/flora.js"></script>
+<script src="js/art.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/player.js"></script>
+<script src="js/spells.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

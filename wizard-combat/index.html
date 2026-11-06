@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#192724"><meta name="description" content="The Hollow — first-person wizard combat."><title>The Hollow</title></head>
+<body>
+  <canvas id="world" aria-label="Combat grounds"></canvas>
+  <div id="vignette"></div><div id="damage-flash"></div>
+  <main id="hud">
+    <div class="hud-menu"><button id="bag-button" class="icon-button" aria-label="Inventory" title="Inventory · I" data-icon="bag"></button><button id="book-button" class="icon-button" aria-label="Spellbook" title="Spellbook · Tab" data-icon="book"></button><button id="lab-button" class="icon-button" aria-label="Settings" title="Settings · T" data-icon="settings"></button></div>
+    <div id="location"><span id="region-name">The Hearth</span><small id="region-level"></small></div>
+    <div id="target-frame" hidden><span class="tf-portrait"></span><div class="tf-body"><div class="tf-name"><b></b><small></small></div><div class="tf-bar"><i></i><span></span></div><div class="tf-status"></div></div></div>
+    <button id="quest-tracker" title="Journal · V"></button><div id="buffs"></div>
+    <div id="death" aria-live="assertive" hidden>YOU DIED</div>
+    <div id="enemy-bars" aria-hidden="true"></div><div id="floaters" aria-hidden="true"></div>
+    <div id="crosshair"><i></i><b></b></div>
+    <div id="ward-indicator" hidden aria-label="Shield charges"><span></span><div class="ward-time"><i></i></div></div>
+    <div id="beam-indicator" hidden><span>☽</span><div><i></i></div></div><div id="notice" role="status"></div>
+    <footer class="bottom-hud">
+      <div class="vitals">
+        <button id="xp-button" title="Spellbook · Tab"><span id="level-text">1</span><div class="xp-track"><i id="xp-fill"></i></div><b id="knowledge-badge"></b></button>
+        <div class="vital hp" title="Health"><div class="meter"><i id="hp"></i><span id="hp-text">100</span></div></div>
+        <div class="vital mana" title="Mana"><div class="meter"><i id="mana"></i><span id="mana-text">100</span></div></div>
+      </div>
+      <div class="action-bar"><div id="spell-dock" aria-label="Abilities"></div><div id="utility-dock" aria-label="Utility spells"></div></div>
+    </footer>
+  </main>
+  <div id="entry" class="veil"><section class="entry-card"><div class="sigil">✧</div><h1>The Hollow</h1><button id="enter" class="play-button" aria-label="Play" title="Play">▶</button></section></div>
+  <div id="pause" class="veil hidden"><section class="pause-card"><h2>Paused</h2><button id="resume" class="primary">▶ <span>Resume</span></button><button id="windowed" class="hidden">Windowed play</button><small id="pointer-help" hidden>Mouse capture unavailable. Arrow keys to look; J / K / L mirror attack / bind / shield.</small><div class="pause-menu"><button id="pause-bag" title="Inventory" aria-label="Inventory" data-icon="bag"></button><button id="pause-book" title="Spellbook" aria-label="Spellbook" data-icon="book"></button><button id="pause-lab" title="Settings" aria-label="Settings" data-icon="settings"></button></div></section></div>
+  <dialog id="book" class="codex">
+    <nav class="codex-tabs">
+      <button data-page="spells" class="active" data-tip="Spellbook · Tab" aria-label="Spellbook" data-icon="book"></button>
+      <button data-page="equipment" data-tip="Inventory · I" aria-label="Inventory" data-icon="bag"></button>
+      <button data-page="journal" data-tip="Journal · V" aria-label="Journal" data-icon="scroll"></button>
+      <button data-page="map" data-tip="Map · M" aria-label="Map" data-icon="map"></button>
+      <button data-page="bestiary" data-tip="Bestiary · N" aria-label="Bestiary" data-icon="claw"></button>
+      <span class="tabs-gap"></span><span id="knowledge" class="tipped" aria-label="Spell knowledge"></span>
+      <button class="close" data-close="book" aria-label="Close">×</button>
+    </nav>
+    <section id="page-spells" class="journey-page"><div id="spell-tree"></div><button id="respec" class="tipped" aria-label="Relearn spells" data-icon="undo"></button></section>
+    <section id="page-equipment" class="journey-page" hidden><div class="inventory">
+      <div id="char-stats"></div>
+      <div id="paperdoll"><svg class="doll-lines" viewBox="0 0 440 516"></svg><div class="doll-figure"></div></div>
+      <div class="bag"><div id="pack-grid"></div></div>
+    </div></section>
+    <section id="page-journal" class="journey-page" hidden><div id="quest-list"></div></section>
+    <section id="page-map" class="journey-page" hidden><canvas id="world-map" aria-label="Four seasonal courts and discovered encounters"></canvas></section>
+    <section id="page-bestiary" class="journey-page" hidden><div class="bestiary"><div class="beast-view"><div id="beast-stage"></div><div id="beast-info"></div></div><div id="beast-grid"></div></div></section>
+    <div id="tip" role="tooltip" hidden></div><div id="drag-ghost" hidden></div>
+  </dialog>
+  <dialog id="lab">
+    <header class="dialog-head"><h2>Settings</h2><button class="close icon-button" data-close="lab" aria-label="Close settings">×</button></header>
+    <div class="lab-layout"><div><h3>Encounters</h3><div id="camp-list"></div></div><aside class="lab-settings">
+      <label>Graphics<select id="quality"><option value="balanced">Balanced</option><option value="low">Low</option><option value="high">High</option></select></label><label class="check-label"><input id="perf" type="checkbox"> Frame stats</label>
+      <label class="check-label"><input id="testing-mode" type="checkbox"> Testing mode</label><small id="testing-controls" hidden>G · fly / land<br>Shift · fast · Space ↑ · Ctrl ↓</small>
+      <label>Damage <output id="damage-value">100%</output><input id="damage-scale" type="range" min="50" max="200" step="10" value="100"></label>
+      <label>Sensitivity <output id="sensitivity-value">100%</output><input id="sensitivity" type="range" min="30" max="180" step="10" value="100"></label>
+      <label class="check-label"><input id="respawn" type="checkbox" checked> Respawns</label>
+      <label class="check-label"><input id="sound" type="checkbox" checked> Sound</label>
+      <label class="check-label"><input id="numbers" type="checkbox" checked> Damage numbers</label>
+      <div class="lab-tools"><button id="refill" title="Restore health and mana" aria-label="Restore health and mana">♥ +</button><button id="reset-encounters" title="Reset encounters" aria-label="Reset encounters">↻</button><button id="reset-session" title="New journey" aria-label="New journey">⟲</button></div>
+      <div class="session-stats"><span title="Defeated">⚔ <b id="stat-kills">0</b></span><span title="Deaths">☠ <b id="stat-deaths">0</b></span><span title="Level">✧ <b id="stat-level">1</b></span></div>
+    </aside></div>
+  </dialog>
+  <div id="performance" hidden></div><script type="module" src="/src/main.js"></script>
+</body></html>
