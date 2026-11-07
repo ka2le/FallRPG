@@ -18,7 +18,7 @@ Start by speaking to **Rowan**, beside the village waypost. **Mara** stands outs
 
 | Control | Action |
 | --- | --- |
-| Hold briefly, then drag anywhere | Invisible movement joystick; one at a time |
+| Drag in the bottom third | Immediate invisible movement joystick; one at a time |
 | Pinch with two fingers | Zoom the world in or out (1×–4×) |
 | Tap / click nearby villagers or objects | Talk, gather, rest, or interact |
 | WASD / arrow keys | Walk; cancels the current walking route |
@@ -36,7 +36,7 @@ Start by speaking to **Rowan**, beside the village waypost. **Mara** stands outs
 | P | Download a PNG of the current game view, including visible UI |
 | Escape | Close a menu or pause |
 
-Q/E/F/R can all be reassigned. Click a hotbar ability to prepare or cast it; right-click it to change that slot. Choose a binding in the grimoire, then click a spell. Changing bindings does not reset cooldowns. Menus pause simulation. Sound can be enabled in the pause menu. Walk with the keyboard, or hold a finger anywhere on the world for a quarter second, then drag to use an invisible analog joystick. A second finger switches to pinch zoom and stops movement; lift both fingers before starting a new joystick. Tapping nearby villagers and objects interacts with them; tapping nearby neutral wildlife observes it. Quick taps select or switch a creature target, interact, or place an armed spell. Ordinary ground taps do not start walking. Basic attacks automatically find nearby threats, use no aether, and pause inside Willowmere. Screenshot files use timestamped names and the browser’s normal download destination; capture happens locally with no upload.
+Q/E/F/R can all be reassigned. Click a hotbar ability to prepare or cast it; right-click it to change that slot. Choose a binding in the grimoire, then click a spell. Changing bindings does not reset cooldowns. Menus pause simulation. Sound can be enabled in the pause menu. Walk with the keyboard, or drag in the bottom third of the world to use an invisible analog joystick immediately. Once the joystick has moved, extra fingers cannot zoom, steal or stop it. Lift every finger before starting a new pinch. A fresh two-finger gesture can zoom anywhere, including the lower third if the joystick has not moved yet. Tapping nearby villagers and objects interacts with them; tapping nearby neutral wildlife observes it. Quick taps select or switch a creature target, interact, or place an armed spell. Ordinary ground taps do not start walking. Basic attacks automatically find nearby threats, use no aether, and pause inside Willowmere. Screenshot files use timestamped names and the browser’s normal download destination; capture happens locally with no upload.
 
 Resting at a Hearthstone or inn restores health and aether outside combat. Health does not regenerate while walking; tonics restore 65 health with an eight-second recovery. Returning to a haven between encounters is part of the expedition loop. The market trades three gathered sprigs or twelve amber coins for a tonic. Death returns the player home while preserving discoveries and quest progress.
 
@@ -57,7 +57,7 @@ The world now covers **20000×12600 units**: **10× the area of the 6000×4200 w
 
 New communities include ant-supported canopy groves, fog gardens, burrow ridges, Whitebraid growth, frozen larders, Glassbrood pools, cold gardens, burial mounds, Hush terraces and the Bone Orchard. Eight Giftwillow drawings and several forms of each major tree family mix young, old, browsed, twisted, branching and hollow silhouettes. Related trees stay in recognizable groves instead of being randomly mixed across every habitat.
 
-The view is a three-quarter top-down projection with compressed ground depth, rather than a rotating 3D camera or a strict diamond-tile isometric grid. The layout adapts to narrow windows. Touchscreens use hold-and-drag movement, tap-to-target, nearby interactions and the existing spell and menu buttons, without a visible directional pad. Mobile starts at 1.5× world zoom instead of desktop's 2×, showing a third more world in each direction. Pinch to adjust between 1× and 4×; the HUD stays the same size.
+The view is a three-quarter top-down projection with compressed ground depth, rather than a rotating 3D camera or a strict diamond-tile isometric grid. The layout adapts to narrow windows. Touchscreens use immediate bottom-third joystick movement, tap-to-target, nearby interactions and the existing spell and menu buttons, without a visible directional pad. Mobile starts at 1.5× world zoom instead of desktop's 2×, showing a third more world in each direction. Pinch to adjust between 1× and 4×; the HUD stays the same size.
 
 ## RPG progression
 

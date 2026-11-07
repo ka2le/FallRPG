@@ -71,10 +71,11 @@ test('P downloads the current view and works with menus open',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('mobile hold joystick, pinch zoom, target switching, spells and conversations work together',async({browser})=>{
+test('mobile bottom joystick, fresh pinch zoom, target switching, spells and conversations work together',async({browser})=>{
   test.setTimeout(90000);
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-  const mobile=await context.newPage(),errors=[];mobile.on('pageerror',e=>errors.push(e.message));
+  const mobile=await context.newPage(),errors=[];mobile.setDefaultTimeout(10000);mobile.on('pageerror',e=>errors.push(e.message));
+  let stage='startup';
   try{
     await mobile.goto('/?test');await mobile.waitForFunction(()=>!!window.__hollow);
     await mobile.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.learned.add('bramble');g.world.props=[];g.world.interactables=[];g.world.rootwallGroups=[];g.creatures=[];Object.assign(g.player,{x:1080,y:855});g.route=[];g.destination=null;r.camera.x=1080;r.camera.y=855*.72;});
@@ -84,29 +85,50 @@ test('mobile hold joystick, pinch zoom, target switching, spells and conversatio
     const original=await position();let p=await point(1130,855);await mobile.touchscreen.tap(p.x,p.y);await mobile.waitForTimeout(150);
     expect(await position()).toEqual(original);expect(await mobile.evaluate(()=>window.__hollow.game.destination)).toBe(null);
     const cdp=await context.newCDPSession(mobile),send=(type,touchPoints)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints});
-    // Movement can start in the upper half too; only the held finger owns it.
-    const a={id:1,x:50,y:300},b={id:2,x:270,y:300};await send('touchStart',[a]);await mobile.waitForTimeout(320);a.x+=65;await send('touchMove',[a]);
+    stage='upper swipe';
+    // Upper-screen swipes are never a joystick.
+    let a={id:1,x:50,y:300},b={id:3,x:270,y:300};await send('touchStart',[a]);a.x+=65;await send('touchMove',[a]);
+    await mobile.waitForTimeout(100);expect(await position()).toEqual(original);await send('touchEnd',[a]);
+    stage='immediate movement';
+    // The lower-third joystick responds to the very first drag, without a hold.
+    a={id:2,x:50,y:650};await send('touchStart',[a]);a.x+=65;await send('touchMove',[a]);
     await mobile.waitForFunction(x=>window.__hollow.game.player.x>x+8,original.x);
     expect(await mobile.evaluate(()=>window.__hollow.game.autoAttack)).toBe(true);
-    // A second finger immediately stops the joystick and stretches the world view.
-    await send('touchStart',[a,b]);await mobile.waitForFunction(()=>!window.__hollow.game.player.moving);
-    const stopped=await position();a.x=80;b.x=310;await send('touchMove',[a,b]);
-    await mobile.waitForFunction(()=>window.__hollow.renderer.zoom>2);
-    a.x=145;b.x=235;await send('touchMove',[a,b]);await mobile.waitForFunction(()=>window.__hollow.renderer.zoom<1.5);
-    expect(await position()).toEqual(stopped);
-    await send('touchEnd',[a]);await mobile.waitForTimeout(350);b.x+=25;await send('touchMove',[b]);await mobile.waitForTimeout(100);
+    stage='extra fingers';
+    // Extra fingers cannot turn movement into zoom or stop the joystick.
+    await send('touchStart',[a,b]);b.x=330;await send('touchMove',[a,b]);await mobile.waitForTimeout(100);
+    expect(await mobile.evaluate(()=>window.__hollow.renderer.zoom)).toBe(1.5);
+    await send('touchEnd',[b]);const moving=await position();await mobile.waitForFunction(x=>window.__hollow.game.player.x>x+4,moving.x);
+    stage='recentring';
+    // Recentring the joystick does not unlock pinch until every finger is lifted.
+    a.x=50;await send('touchMove',[a]);await mobile.waitForFunction(()=>!window.__hollow.game.player.moving);
+    const stopped=await position();b={id:3,x:270,y:300};await send('touchStart',[a,b]);b.x=340;await send('touchMove',[a,b]);
+    await mobile.waitForTimeout(100);expect(await mobile.evaluate(()=>window.__hollow.renderer.zoom)).toBe(1.5);
+    await send('touchEnd',[a]);b.y=650;await send('touchMove',[b]);await mobile.waitForTimeout(100);
     expect(await position()).toEqual(stopped);await send('touchEnd',[b]);
-    // Holding or pinching while a spell is armed must never confirm placement.
+    stage='fresh pinch';
+    // A fresh two-finger gesture can zoom in and out without moving the player.
+    a={id:4,x:100,y:300};b={id:5,x:290,y:300};await send('touchStart',[a]);await send('touchStart',[a,b]);
+    a.x=50;b.x=340;await send('touchMove',[a,b]);await mobile.waitForFunction(()=>window.__hollow.renderer.zoom>2);
+    a.x=145;b.x=235;await send('touchMove',[a,b]);await mobile.waitForFunction(()=>window.__hollow.renderer.zoom<1.5);
+    expect(await position()).toEqual(stopped);await send('touchEnd',[a]);await send('touchEnd',[b]);
+    stage='spell movement';
+    // Moving with a spell armed must not confirm placement on release.
     await mobile.locator('[data-cast="q"]').tap();expect(await mobile.evaluate(()=>window.__hollow.game.aiming?.slot)).toBe('q');
-    await send('touchStart',[{id:3,x:280,y:620}]);await mobile.waitForTimeout(320);await send('touchEnd',[]);
+    const beforeSpellMove=await position();a={id:6,x:280,y:620};await send('touchStart',[a]);a.x-=50;await send('touchMove',[a]);
+    await mobile.waitForFunction(x=>window.__hollow.game.player.x<x-4,beforeSpellMove.x);await send('touchEnd',[a]);
     expect(await mobile.evaluate(()=>[window.__hollow.game.aiming?.slot,window.__hollow.game.world.barriers.length])).toEqual(['q',0]);
     const current=await position();p=await point(current.x+65,current.y);await mobile.touchscreen.tap(p.x,p.y);
     expect(await mobile.evaluate(()=>[window.__hollow.game.world.barriers.length,window.__hollow.game.destination])).toEqual([1,null]);
-    // Opening a menu cancels held movement and it cannot resume when the menu closes.
-    await send('touchStart',[{id:4,x:70,y:400}]);await mobile.waitForTimeout(320);await send('touchMove',[{id:4,x:125,y:400}]);
+    stage='pause reset';
+    // Exercise the menu handlers while cancelling a synthetic held pointer;
+    // movement must stay stopped after the menu closes.
+    a={id:7,x:70,y:650};await send('touchStart',[a]);a.x+=55;await send('touchMove',[a]);
+    await mobile.waitForFunction(()=>window.__hollow.game.player.moving);
     await mobile.locator('[data-menu="pause"]').evaluate(el=>el.click());await send('touchEnd',[]);
-    await expect(mobile.getByRole('dialog',{name:'Paused',exact:true})).toBeVisible();await mobile.getByRole('button',{name:'Continue',exact:true}).tap();
+    await expect(mobile.getByRole('dialog',{name:'Paused',exact:true})).toBeVisible();await mobile.getByRole('button',{name:'Continue',exact:true}).evaluate(el=>el.click());await expect(mobile.getByRole('dialog')).toHaveCount(0);
     const resumed=await position();await mobile.waitForTimeout(150);expect(await position()).toEqual(resumed);
+    stage='retargeting';
     // An explicit tap overrides the automatic attack's previous target.
     await mobile.evaluate(()=>{const g=window.__hollow.game;g.world.barriers=[];g.safeZonesEnabled=false;g.player.invulnerable=100;g.creatures=[-1,1].map((side,i)=>({id:`tap-${i}`,type:'seedling',x:g.player.x+side*50,y:g.player.y,homeX:g.player.x+side*50,homeY:g.player.y,hp:1000,maxHp:1000,root:100,stun:0,slow:0,flash:0,attack:100,walk:0,face:1,phase:0}));g.target='tap-0';g.boltCooldown=0;});
     await mobile.waitForFunction(()=>window.__hollow.game.projectiles.some(s=>s.target==='tap-0'));
@@ -114,6 +136,7 @@ test('mobile hold joystick, pinch zoom, target switching, spells and conversatio
     expect(await mobile.evaluate(()=>window.__hollow.game.target)).toBe('tap-1');
     await mobile.waitForFunction(()=>window.__hollow.game.projectiles.some(s=>s.target==='tap-1'));
     await mobile.screenshot({path:'artifacts/mobile-joystick-zoom.png'});
+    stage='NPC conversation';
     await mobile.reload();await mobile.waitForFunction(()=>!!window.__hollow);
     await mobile.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.player.x=1040;g.player.y=825;r.camera.x=1040;r.camera.y=825*.72;});
     await mobile.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');
@@ -125,7 +148,7 @@ test('mobile hold joystick, pinch zoom, target switching, spells and conversatio
     }
     await mobile.setViewportSize({width:844,height:390});expect(await mobile.evaluate(()=>window.__hollow.renderer.zoom)).toBe(1.5);
     expect(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
-  }finally{await context.close();}
+  }catch(error){console.error(`Mobile control stage: ${stage}`);throw error;}finally{await context.close().catch(()=>{});}
 });
 
 test('expanded regions, new atlases, wildlife journal and bounded terrain cache render',async({page})=>{
