@@ -4,8 +4,8 @@ import {floorAt,moveBody} from './physics.js';
 // Session-only traversal tools. Normal combat movement stays in Combat.move.
 export class TestingMode{
   constructor(game){this.game=game;this.enabled=false;this.flying=false;game.testing=this;}
-  setEnabled(enabled){if(!enabled&&this.flying)this.land();this.enabled=!!enabled;}
-  land(){const p=this.game.player;this.flying=false;p.y=floorAt(p.x,p.z)+1.7;p.vy=0;p.grounded=true;}
+  setEnabled(enabled){if(!enabled&&this.flying)this.land();if(!enabled)this.game.player.vx=this.game.player.vz=0;this.enabled=!!enabled;}
+  land(){const p=this.game.player;this.flying=false;p.y=floorAt(p.x,p.z)+1.7;p.vx=p.vz=p.vy=0;p.grounded=true;}
   toggleFlight(){if(!this.enabled)return false;if(this.flying)this.land();else{this.flying=true;this.game.player.vy=0;this.game.player.grounded=false;}return this.flying;}
   move(dx,dz,dt,sprint=false,vertical=0){
     if(!this.enabled)return false;

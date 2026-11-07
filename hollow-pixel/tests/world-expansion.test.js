@@ -4,13 +4,14 @@ import { createWorld, WIDTH, HEIGHT, HOME, biomeAt, canWalk, lineClear, inVillag
 import { EXPANSION_PATHS, EXPANSION_PLACES, REGION_SITES, CAMP_SITES } from '../src/regions.js';
 import { MORE_SPECIES } from '../src/expansion-monsters.js';
 import { SPECIES } from '../src/data.js';
+import { FRONTIER_PLACES } from '../src/frontier.js';
 
 const world=createWorld();
 test('expanded world has more than five times the area with every new species represented',()=>{
   assert.ok(WIDTH*HEIGHT/(2400*1800)>5.5);assert.equal(EXPANSION_PLACES.length,18);
   assert.ok(world.props.filter(p=>!p.removed).length>4000);assert.ok(world.creatures.length>170);
   for(const type of Object.keys(MORE_SPECIES))assert.ok(world.creatures.some(c=>c.type===type),type);
-  assert.equal(new Set(world.creatures.map(c=>c.type)).size,36);
+  assert.equal(new Set(world.creatures.map(c=>c.type)).size,37);
   assert.equal(world.creatures[0].id,'creature-0');assert.equal(world.creatures[0].type,'barkjaw');assert.equal(world.creatures[0].x,826);
   assert.deepEqual(HOME,{x:1080,y:855});
 });
@@ -30,7 +31,7 @@ test('all eighteen new landmarks are reachable on foot from Willowmere',()=>{
       const nx=x+dx,ny=y+dy,k=ny*cols+nx;if(!seen[k]&&open(nx,ny)&&canWalk(world,(x+nx)*size/2,(y+ny)*size/2,8)){seen[k]=1;qx.push(nx);qy.push(ny);}
     }
   }
-  for(const p of EXPANSION_PLACES)assert.ok(seen[Math.round(p.y/size)*cols+Math.round(p.x/size)],p.id);
+  for(const p of [...EXPANSION_PLACES,...FRONTIER_PLACES])assert.ok(seen[Math.round(p.y/size)*cols+Math.round(p.x/size)],p.id);
 });
 test('landmarks and animals belong to their stated habitats and spawn on usable ground',()=>{
   for(const place of EXPANSION_PLACES){assert.equal(biomeAt(place.x,place.y),place.biome,place.id);assert.ok(canWalk(world,place.x,place.y),place.id);}
@@ -39,12 +40,12 @@ test('landmarks and animals belong to their stated habitats and spawn on usable 
 });
 test('new camps offer safety, rest and local conversations without hiding objectives in HUD',()=>{
   for(const camp of CAMP_SITES){assert.ok(inVillage(camp));assert.ok(world.interactables.some(i=>i.id===`hearth-${camp.id}`&&i.kind==='hearth'));assert.ok(world.interactables.some(i=>i.id===`npc-${camp.id}`&&i.dialogue));}
-  assert.equal(world.interactables.filter(i=>i.kind==='lore').length,REGION_SITES.length);
+  assert.equal(world.interactables.filter(i=>i.kind==='lore'&&!i.id.startsWith('sign-')).length,REGION_SITES.length);
 });
 test('drawn tree variants and creature variants are distributed among habitats',()=>{
   const groves=world.props.filter(p=>p.atlas==='groves'&&!p.removed);assert.ok(new Set(groves.map(p=>p.art)).size>55);
   for(const family of ['giftwillow','claspwood','sourheart','amberoak','snowfir','frostwood'])assert.ok(new Set(groves.filter(p=>p.family===family).map(p=>p.art)).size>=4,family);
-  assert.equal(new Set(world.creatures.filter(c=>c.visual).map(c=>c.visual.sprite)).size,8);
+  assert.equal(new Set(world.creatures.filter(c=>c.visual?.atlas==='wildlife').map(c=>c.visual.sprite)).size,8);
 });
 test('spatial collision queries reflect replaced arrays, additions and removed scenery',()=>{
   const arena={props:[{x:1100,y:855,solid:12}]};assert.equal(canWalk(arena,1100,855),false);

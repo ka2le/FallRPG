@@ -10,12 +10,13 @@ import {SPELLS,SPECIES,CAMPS,ACTIONS,CONTROLS,SHIELD} from './data.js';
 import {spellIcon} from './art/spells.js';
 import {MONSTER_ART} from './monsters/index.js';
 import {svgMarkup,restPose} from './monsters/rig.js';
+import {HABITATS} from './habitats.js';
 import {TouchControls} from './touch-controls.js';
 
 const $=s=>document.querySelector(s),game=new Combat();
 const testing=new TestingMode(game);
 const SAVE_KEY='hollow-fey-journey-v2';let saveError=false,resetting=false,lastSaved=null;
-try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(game.restore(data)){game.player.grounded=true;game.player.y=floorAt(game.player.x,game.player.z)+1.7;}}catch{}
+try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(game.restore(data)){game.player.grounded=true;game.player.y=floorAt(game.player.x,game.player.z,game.player.y-1.4)+1.7;}}catch{}
 function saveGame(){if(resetting)return;try{const serialized=JSON.stringify(game.save());if(serialized===lastSaved)return;localStorage.setItem(SAVE_KEY,serialized);lastSaved=serialized;saveError=false;}catch{saveError=true;}}
 const icons={
   book:'<path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"/>',
@@ -52,6 +53,9 @@ CAMPS.forEach((c,i)=>{
   b.innerHTML=`<span class="enemies">${[...new Set(c.types)].slice(0,3).map(t=>`<span class="portrait tiny">${portraitOf(t)}</span>`).join('')}${c.types.length>3?`<small>${c.types.length}</small>`:''}</span><span class="name">${c.name} · ${c.level}</span>`;
   b.onclick=()=>{game.travel(i);closeDialogs();resume();};$('#camp-list').append(b);
 });
+const habitatHeading=document.createElement('h3');habitatHeading.textContent='Living habitats';$('#camp-list').after(habitatHeading);
+const habitatList=document.createElement('div');habitatList.className='habitat-list';habitatHeading.after(habitatList);
+for(const h of HABITATS){const b=document.createElement('button');b.className='camp-button';b.textContent=h.name;b.title=h.detail;b.onclick=()=>{const p=game.player;p.x=h.x;p.z=h.z+(h.id==='elder'?34:h.r*.55);p.y=floorAt(p.x,p.z)+1.7;p.yaw=0;p.pitch=.08;p.vx=p.vz=p.vy=0;p.grounded=true;p.invuln=3;p.recovery=3;p.slow=0;noticeUntil=0;$('#notice').textContent='';$('#notice').style.opacity='0';p.hp=p.maxHp;p.mana=p.maxMana;game.projectiles=[];game.beam.time=0;game.explore();closeDialogs();resume();};habitatList.append(b);}
 function stop(){saveGame();playing=false;keys.clear();held.clear();touch.reset();game.player.moving=false;game.player.vx=game.player.vz=0;document.body.classList.remove('playing');}
 function closeDialogs(){for(const id of ['book','lab'])if($(`#${id}`).open)$(`#${id}`).close();}
 function openDialog(id,page='spells'){
@@ -83,7 +87,7 @@ $('#refill').onclick=()=>{game.player.hp=game.player.maxHp;game.player.mana=game
 $('#reset-encounters').onclick=()=>{game.resetEncounters();tone(380,.1);};
 $('#reset-session').onclick=()=>{if(!confirm('Start a new journey? This resets your saved spells, equipment and exploration.'))return;resetting=true;localStorage.removeItem(SAVE_KEY);location.reload();};
 $('#xp-button').onclick=()=>openDialog('book');$('#quest-tracker').onclick=()=>openDialog('book','journal');
-$('#quality').onchange=e=>{const preset={low:[1,32,150],balanced:[1.5,55,220],high:[1.75,70,270]}[e.target.value];world.renderer.setPixelRatio(Math.min(devicePixelRatio,preset[0]));world.treeDetail=preset[1];world.viewDistance=preset[2];world.resize();world.forestTimer=0;};
+$('#quality').onchange=e=>{const preset={low:[1,32,150],balanced:[1.5,55,220],high:[1.75,70,270]}[e.target.value];world.renderer.setPixelRatio(Math.min(devicePixelRatio,preset[0]));world.groundQuality(e.target.value);world.treeDetail=preset[1];world.viewDistance=preset[2];world.resize();world.forestTimer=0;};
 $('#perf').onchange=e=>$('#performance').hidden=!e.target.checked;
 let showNumbers=true;$('#numbers').onchange=e=>showNumbers=e.target.checked;
 $('#testing-mode').onchange=e=>{testing.setEnabled(e.target.checked);$('#testing-controls').hidden=!testing.enabled;notice(testing.enabled?'Testing · G to fly · Shift to accelerate':'Testing off');};
@@ -117,6 +121,8 @@ let lastHurtTone=0;
 function consumeEvents(){
   const events=game.events.splice(0);world.events(events);
   for(const ev of events){
+    if(ev.type==='habitat'){notice(`${ev.name} · field guide updated`);tone(430,.5,'sine',.035,860);}
+    if(ev.type==='ecology-cue'&&Math.hypot(ev.at.x-game.player.x,ev.at.z-game.player.z)<20){notice(ev.text);tone(68,.6,'triangle',.025,42);}
     if(ev.type==='death'){deathUntil=performance.now()+2300;tone(180,.5,'triangle',.08,45);}
     if(ev.type==='hurt'){flash=Math.min(.7,flash+.16);if(game.time-lastHurtTone>.15){tone(80,.12,'triangle',.04,40);lastHurtTone=game.time;}}
     if(ev.type==='cast'){const s=SPELLS[ev.spell];tone([320,220,140,610,180,550,420,660,550,420,320][ev.spell],s.cost?.23:.12,'sine',s.cost?.045:.025,s.cost?130:270);}
@@ -144,16 +150,16 @@ function updateFloaters(dt){
 }
 function portraitOf(type){const art=MONSTER_ART[type];return art?svgMarkup(art,restPose(art)):`<span class="emoji">${SPECIES[type].emoji}</span>`;}
 let frameTarget=null;
-function updateTargetFrame(){
-  const t=game.target(72)||game.enemies.find(e=>e.id===game.beam.target&&e.hp>0),frame=$('#target-frame');
+function updateTargetFrame(target){
+  const t=target||game.enemies.find(e=>e.id===game.beam.target&&e.hp>0),frame=$('#target-frame');
   if(!t){frame.hidden=true;frameTarget=null;return;}frame.hidden=false;
   if(frameTarget!==t.id){frameTarget=t.id;frame.querySelector('.tf-portrait').innerHTML=portraitOf(t.type);frame.querySelector('.tf-name b').textContent=SPECIES[t.type].name;frame.querySelector('.tf-name small').textContent=t.level;}
   frame.querySelector('.tf-bar i').style.transform=`scaleX(${Math.max(0,t.hp/t.maxHp)})`;frame.querySelector('.tf-bar span').textContent=`${Math.ceil(t.hp)} / ${t.maxHp}`;
-  frame.querySelector('.tf-status').innerHTML=[t.windup>0?'<i class="st danger">Attacking</i>':'',t.root>0?`<i class="st root">Rooted ${t.root.toFixed(1)}s</i>`:'',t.freeze>0?'<i class="st stun">Staggered</i>':'',t.slow>0?'<i class="st slow">Slowed</i>':'',t.burn>0?'<i class="st burn">Burning</i>':'',t.shell?'<i class="st shell">Ice shell</i>':''].join('');
+  frame.querySelector('.tf-status').innerHTML=[t.eco&&(!t.aggro||t.routine==='warn')?`<i class="st">${t.routine==='warn'?'Warning':t.routine==='feed'?'Feeding':t.routine==='lookout'?'Keeping watch':t.routine==='flee'?'Fleeing':SPECIES[t.type].neutral?'Peaceful':'Hunting'}</i>`:'',t.windup>0?'<i class="st danger">Attacking</i>':'',t.root>0?`<i class="st root">Rooted ${t.root.toFixed(1)}s</i>`:'',t.freeze>0?'<i class="st stun">Staggered</i>':'',t.slow>0?'<i class="st slow">Slowed</i>':'',t.burn>0?'<i class="st burn">Burning</i>':'',t.shell?'<i class="st shell">Ice shell</i>':''].join('');
   frame.classList.toggle('danger',t.windup>0);
 }
-function updateEnemyBars(){
-  const target=game.target(70),live=new Set(game.enemies.map(e=>e.id));
+function updateEnemyBars(target){
+  const live=new Set(game.enemies.map(e=>e.id));
   for(const [id,node] of barViews)if(!live.has(id)){node.remove();barViews.delete(id);}
   for(const e of game.enemies){
     let node=barViews.get(e.id);
@@ -167,11 +173,11 @@ function updateEnemyBars(){
     node.classList.toggle('danger',e.windup>0);
     node.querySelector('.status').textContent=[e.windup>0?'!':'',e.root>0?'❧':'',e.freeze>0?'◎':'',game.beam.time>0&&game.beam.target===e.id?'☽':'',e.shell?'◇':''].filter(Boolean).slice(0,3).join('');
   }
-  $('#crosshair').classList.toggle('locked',!!game.target());$('#crosshair').classList.toggle('hit',performance.now()<hitUntil);
+  $('#crosshair').classList.toggle('locked',!!target);$('#crosshair').classList.toggle('hit',performance.now()<hitUntil);
 }
 let uiTime=0;
 function updateUI(dt){
-  updateEnemyBars();updateFloaters(dt);updateTargetFrame();uiTime+=dt;if(uiTime<.05)return;uiTime=0;const p=game.player;
+  updateFloaters(dt);uiTime+=dt;if(uiTime<1/30)return;uiTime=0;const target=game.target(72);updateEnemyBars(target);updateTargetFrame(target);const p=game.player;
   $('#hp').style.transform=`scaleX(${p.hp/p.maxHp})`;$('#mana').style.transform=`scaleX(${p.mana/p.maxMana})`;$('#hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('#mana-text').textContent=`${Math.floor(p.mana)} / ${p.maxMana}`;
   dockNodes.forEach((node,n)=>{
     const control=CONTROLS[n],index=ACTIONS[control.action],s=SPELLS[control.action==='attack'?game.attackMode:index],known=game.known.has(control.action);node.hidden=!known;node.classList.toggle('locked',!known);

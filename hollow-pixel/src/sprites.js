@@ -17,6 +17,7 @@ export function characterFrame(index,{moving=false,walk=0,direction='down'}={}){
 }
 export function creatureAppearance(def,creature={}){
   const atlas=creature.visual?.atlas||def.atlas||'creatures',base=creature.visual?.sprite??def.sprite;
+  if(atlas==='groves'||atlas==='wilds')return {atlas,frame:base};
   return {atlas,frame:atlas==='wildlife'?base+(creature.moving&&Math.floor(creature.walk)%2===1?32:0):characterFrame(base,creature)};
 }
 export function environmentFrame(prop){

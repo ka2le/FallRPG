@@ -1,5 +1,5 @@
 import { SPECIES } from './data.js';
-import { dist, biomeAt } from './world.js';
+import { dist, biomeAt, propsNear } from './world.js';
 
 const resources={
   flowerCircuit:{families:['blossom'],art:[11,12]},
@@ -19,7 +19,7 @@ const states={flowerCircuit:'carrying pollen',strippingStones:'shedding greenery
 function feedingPlaces(game,c,behavior){
   if(c.feedingPlaces)return c.feedingPlaces;
   const rule=resources[behavior],home={x:c.homeX,y:c.homeY},s=SPECIES[c.type];
-  c.feedingPlaces=rule?game.world.props.filter(p=>!p.removed&&dist(p,home)<340&&(!s.neutral||biomeAt(p.x,p.y)===s.habitat)&&(rule.families?.includes(p.family)||(p.atlas==='wilds'&&rule.art?.includes(p.art))))
+  c.feedingPlaces=rule?propsNear(game.world,c.homeX,c.homeY,340).filter(p=>!p.removed&&dist(p,home)<340&&(!s.neutral||biomeAt(p.x,p.y)===s.habitat)&&(rule.families?.includes(p.family)||(p.atlas==='wilds'&&rule.art?.includes(p.art))))
     .sort((a,b)=>dist(a,home)-dist(b,home)).slice(0,3):[];
   return c.feedingPlaces;
 }
@@ -49,7 +49,7 @@ export function expansionEcology(game,c,dt){
   if(behavior==='claspwoodCalls'&&dist(c,game.player)<110&&game.time>(c.nextCall||0)){
     c.nextCall=game.time+12;c.callUntil=game.time+1.4;
     if(dist(c,game.player)<800)game.effect('ring',c.x,c.y,'#d7c18c',{radius:32,life:.8});
-    if(site?.clasp){site.lastSnap=game.time;game.effect('roots',site.x,site.y,'#afbf77',{life:.8});if(dist(game.player,site)<38)game.damagePlayer(6);}
+    if(site?.clasp)game.triggerTree(site);
   }
   c.calling=(c.callUntil||0)>game.time;
   if(behavior==='debrisFilter'||behavior==='slowGrazer'){

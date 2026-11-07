@@ -5,6 +5,20 @@ import { biomeBlend } from '../src/terrain.js';
 import { updateAmbient } from '../src/ambient.js';
 import { biomeAt, seamX, seasonY, canWalk, dist } from '../src/world.js';
 
+test('world zoom is bounded and keeps the camera and touch coordinate mapping consistent',()=>{
+  const canvas={style:{},parentElement:{getBoundingClientRect:()=>({width:391,height:845})}};
+  canvas.getBoundingClientRect=()=>({left:0,top:0,width:parseFloat(canvas.style.width),height:parseFloat(canvas.style.height)});
+  const renderer=Object.assign(Object.create(Renderer.prototype),{canvas,ctx:{},zoom:2,camera:{x:1080,y:615}});
+  for(const zoom of [1.5,2.5,100,.1]){
+    renderer.setZoom(zoom);assert.ok(renderer.zoom>=1&&renderer.zoom<=4);assert.deepEqual(renderer.camera,{x:1080,y:615});
+    const point={x:1120,y:850},screen=renderer.screen(point.x,point.y),r=canvas.getBoundingClientRect();
+    const mapped=renderer.world(screen.x/renderer.width*r.width,screen.y/renderer.height*r.height);
+    assert.ok(Math.abs(mapped.x-point.x)<1);assert.ok(Math.abs(mapped.y-point.y)<1);
+    assert.equal(renderer.ctx.imageSmoothingEnabled,false);
+  }
+  const zoom=renderer.zoom;renderer.setZoom(NaN);assert.equal(renderer.zoom,zoom);
+});
+
 test('scenery keeps its pixel spacing and ground alignment during vertical and diagonal camera motion',()=>{
   const renderer=Object.assign(Object.create(Renderer.prototype),{width:721,height:451,camera:{x:1080,y:615}});
   const points=[[814.2,510.4],[880.8,575.2],[1090,855]],base=points.map(([x,y])=>renderer.screen(x,y));

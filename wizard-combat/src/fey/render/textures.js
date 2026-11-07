@@ -1,3 +1,4 @@
+import {foliageMipmaps} from '../../foliage-mips.js';
 // Procedurally generated texture assets: tileable noise fields, normal maps,
 // bark, leaf clusters, petals, sprites. Everything is generated at runtime so the
 // game runs from file:// with no external image loads.
@@ -142,6 +143,15 @@ function canvasTex(c, srgb = true, repeat = false) {
   t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
   return t;
 }
+function foliageTex(c){
+  const texture=canvasTex(c),pixels=c.getContext('2d').getImageData(0,0,c.width,c.height);
+  texture.mipmaps=foliageMipmaps(pixels.data,c.width,c.height).map(level=>{
+    const image=canvas(level.width,level.height);
+    image.getContext('2d').putImageData(new ImageData(level.data,level.width,level.height),0,0);
+    return image;
+  });
+  texture.generateMipmaps=false;texture.needsUpdate=true;return texture;
+}
 function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
 
 function drawLeafShape(ctx, kind, len, wid) {
@@ -196,7 +206,7 @@ export function makeLeafCardTexture(kind, seed = 3) {
       const t = 0.12 + k * 0.11, sd = k % 2 ? 1 : -1;
       twig(S / 2 + sd * 4, S * (0.03 + t * 0.9), -sd * (0.7 + rnd() * 0.3), S * (0.34 - t * 0.2), 3);
     }
-    return canvasTex(c);
+    return foliageTex(c);
   }
   // ---- delicate foliage: many small, soft, overlapping leaves with gaps between them.
   // No outlines or painted veins: each leaf is a soft gradient (light heart, deeper rim),
@@ -234,7 +244,7 @@ export function makeLeafCardTexture(kind, seed = 3) {
         softLeaf(x, y, Math.PI / 2 + sd * (0.35 + rnd() * 0.3), 18 + rnd() * 10, 2.6 + rnd() * 1.2, rnd() * 0.9, rnd());
       }
     }
-    return canvasTex(c);
+    return foliageTex(c);
   }
   if (kind === 'blossom') {
     // airy sprays of small five-petal blossoms, a few young leaves between them
@@ -259,7 +269,7 @@ export function makeLeafCardTexture(kind, seed = 3) {
         ctx.restore();
       }
     }
-    return canvasTex(c);
+    return foliageTex(c);
   }
   // broad / small: several leafy sprays, back leaves deeper, front leaves lighter
   const small = kind === 'small';
@@ -285,7 +295,7 @@ export function makeLeafCardTexture(kind, seed = 3) {
       softLeaf(x, y, a + (rnd() - 0.5) * 2.2, len, wid, l, rnd());
     }
   }
-  return canvasTex(c);
+  return foliageTex(c);
 }
 
 // single leaf sprite atlas (falling leaves / ground litter): maple, oak, birch, petal

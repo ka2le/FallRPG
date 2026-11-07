@@ -133,6 +133,11 @@ class GeoBuilder {
     geo.computeBoundingSphere();
     return geo;
   }
+
+  copyGroup(source,group){
+    // Identical cards, UVs and normals preserve canopy coverage and lighting.
+    for(const key of ['pos','nor','uv','leaf','idx'])this.g[group][key]=source.g[group][key].slice();
+  }
 }
 
 function randUnit(rng) {
@@ -240,7 +245,7 @@ function genBroadleaf(kind, seed) {
   }
   const high = b.build();
 
-  // ---- low LOD (now only a cheap shadow caster; distant trees are impostors)
+  // Distant trees keep their complete canopy; simplify the expensive branch tubes.
   const lo = new GeoBuilder(2);
   // trunk + first-level branches only
   for (const br of branchPts) {
@@ -250,10 +255,7 @@ function genBroadleaf(kind, seed) {
     const simp = pts.filter((_, k) => k % 2 === 0 || k === pts.length - 1);
     lo.tube(0, simp, i === 0 ? 5 : 3, 1.0, 0.5, false);
   }
-  // Sparse foliage cards share the near texture; avoid opaque canopy blobs at FPS sightlines.
-  const stride=Math.max(1,Math.ceil(leaves.length/48));
-  for(let i=0;i<leaves.length;i+=stride){const l=leaves[i],out=l.c.clone().sub(cc).normalize(),n=out.clone().lerp(V(0,1,0),.35).normalize(),u=perp(n).multiplyScalar(l.s*.8),v=V().crossVectors(n,u).normalize().multiplyScalar(l.s*.8);lo.quad(1,l.c,u,v,n,1);}
-  for(let i=0;i<hangs.length;i+=Math.max(1,Math.ceil(hangs.length/18))){const h=hangs[i],out=h.c.clone().sub(cc).setY(0).normalize(),u=V().crossVectors(out,V(0,1,0)).normalize().multiplyScalar(.85),v=V(0,h.len*.5,0);lo.quad(1,h.c.clone().add(V(0,-h.len*.5,0)),u,v,out,1);}
+  lo.copyGroup(b,1);
   const low = lo.build();
   return { high, low, trunkR: P.trunkR, height: trunkH };
 }
@@ -308,20 +310,7 @@ function genPine(seed) {
   const high = b.build();
   const lo = new GeoBuilder(2);
   lo.tube(0, [pts[0], pts[5], pts[10]], 4, 1, 0.4, false);
-  // stacked cones
-  const cone = (y0, r, h) => {
-    const segs = 7, base = lo.g[1].pos.length / 3;
-    const tip = lo.vert(1, V(0, y0 + h, 0), V(0, 1, 0), 0.5, 1, 1);
-    for (let j = 0; j <= segs; j++) {
-      const a = (j / segs) * Math.PI * 2;
-      const rr = r * (0.85 + rng.next() * 0.3);
-      lo.vert(1, V(Math.cos(a) * rr, y0, Math.sin(a) * rr), V(Math.cos(a), 0.6, Math.sin(a)).normalize(), j / segs, 0, 1);
-    }
-    for (let j = 0; j < segs; j++) lo.tri(1, tip, base + 2 + j, base + 1 + j);
-  };
-  cone(H * 0.18, 4.3, H * 0.4);
-  cone(H * 0.4, 3.3, H * 0.35);
-  cone(H * 0.62, 2.2, H * 0.4);
+  lo.copyGroup(b,1);
   return { high, low: lo.build(), trunkR: 0.38, height: H };
 }
 
@@ -373,7 +362,7 @@ function genCrystalTree(seed) {
   const high = b.build();
   const lo = new GeoBuilder(2);
   lo.tube(0, [pts[0], pts[4], pts[8]], 5, 0.5, 0.3, false);
-  for (let s = 0; s < 6; s++) shard(lo, 1, pts[6 + (s % 3)].p.clone(), V(0, 1, 0).addScaledVector(randUnit(rng), 0.7).normalize(), rng.range(1.5, 3), 0.3, rng);
+  lo.copyGroup(b,1);
   return { high, low: lo.build(), trunkR: 0.4, height: H };
 }
 
@@ -449,7 +438,7 @@ function genGiantFlower(seed) {
   const high = b.build();
   const lo = new GeoBuilder(3);
   lo.tube(0, [pts[0], pts[6], pts[12]], 4, 1, 0.3, false);
-  lo.blob(1, top.clone().addScaledVector(face, 0.5), L * 0.9, rng, top, 0.35, 0);
+  lo.copyGroup(b,1);lo.copyGroup(b,2);
   return { high, low: lo.build(), trunkR: 0.3, height: H };
 }
 
@@ -478,8 +467,8 @@ function genGiantMushroom(seed) {
   const high = b.build();
   const lo = new GeoBuilder(3);
   lo.lathe(0, [stem[0], stem[4], stem[8]], 6);
-  lo.lathe(1, [[R, H - 0.1], [R * 0.7, H + R * 0.4], [0.01, H + R * 0.55]], 8);
-  lo.lathe(2, [[sr, H - 0.2], [R, H - 0.15]], 8);
+  lo.lathe(1, cap.filter((_,i)=>i%2===0), 12, V(), 2);
+  lo.lathe(2, gills, 12, V(), 8);
   const lgn = lo.g[2].nor; for (let i = 0; i < lgn.length / 3; i++) { lgn[i * 3 + 1] = -1; }
   return { high, low: lo.build(), trunkR: sr * 1.2, height: H + R * 0.5, capR: R, capH: H, capDome: R * 0.55 };
 }

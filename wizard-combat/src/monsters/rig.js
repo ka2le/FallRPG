@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 
 const NS='http://www.w3.org/2000/svg',DEG=Math.PI/180;
-export const STATE=()=>({t:0,move:0,phase:0,windup:0,attack:0,hurt:0,stun:0,root:0,slow:0,dodge:0,dead:0,seed:0,heal:0});
+export const STATE=()=>({t:0,move:0,phase:0,windup:0,attack:0,hurt:0,stun:0,root:0,slow:0,dodge:0,dead:0,seed:0,heal:0,thaw:0,quench:0,grounded:0});
 export function restPose(def){const pose={};for(const p of def.parts)pose[p.id]={x:0,y:0,r:0,sx:1,sy:1,o:1};return pose;}
 export function resetPose(pose){for(const k in pose){const q=pose[k];q.x=q.y=q.r=0;q.sx=q.sy=q.o=1;}return pose;}
 export function evaluate(def,state,pose=restPose(def)){resetPose(pose);def.animate(pose,state);return pose;}

@@ -1,5 +1,6 @@
 import { MORE_SPECIES } from './expansion-monsters.js';
 import { EXPANSION_PLACES } from './regions.js';
+import { FRONTIER_PLACES } from './frontier.js';
 
 export const BIOMES = {
   spring: { name: 'The Verdant Reach', short: 'Spring', subtitle: 'WHERE THE FOREST FEEDS ITS HERDS', color: '#9dbb77', ground: ['#405f42','#496b47','#53764d','#5e8052','#688653'], accent: '#f0b0ba' },
@@ -32,6 +33,7 @@ export const SLOTS = ['q','e','f','r'];
 
 export const SPECIES = {
   ...MORE_SPECIES,
+  wallroot:{name:'Marching Claspwood',sprite:8,atlas:'groves',size:88,hp:96,speed:18,damage:6,xp:28,habitat:'spring',rootwall:true,note:'A walking Claspwood belonging to a traveling hedge. The group spreads through the woods, gathers across a trail and roots into a living wall for about a minute. Then it peels away one trunk at a time, migrating to its next gathering place. Leave the warning root circle quickly; cutting down a trunk opens a gap.'},
   barkjaw: { name:'Barkjaw', sprite:0, size:56, hp:100, speed:16, damage:12, neutral:true, habitat:'spring', note:'Its six mouth-limbs wrestle the trees it eats. A pair alternates feeding and keeping watch; the lookout drives Rootknives away.' },
   rootknife: { name:'Rootknife', sprite:1, size:56, hp:64, speed:39, damage:12, habitat:'spring', note:'This root-shaped hunter waits for a grazer to commit its mouth-limbs to a tree. A healthy feeding pair makes it hesitate.' },
   mantleback: { name:'Mantleback', sprite:2, size:64, hp:120, speed:12, damage:10, neutral:true, habitat:'autumn', note:'The garden on its back is its pantry. Fungi break down the endless autumn litter; smaller animals shelter between the mushrooms.' },
@@ -55,10 +57,12 @@ export const PLACES = [
   {id:'seam', name:'The Steamward', x:1275, y:1370, description:'Some lives belong to both sides of a boundary.', biome:'winter'},
   {id:'ember', name:'Cinderwatch', x:1845, y:1320, description:'Nest ledges warm below, cold and wet above.', biome:'ember'},
   ...EXPANSION_PLACES,
+  ...FRONTIER_PLACES,
+  {id:'crownless',name:'The Crownless Road · Lv 11',x:6520,y:660,biome:'ember',description:'Ancient guardians bar the long road beyond Whitebraid. Bring your best equipment.'},
 ];
 
 export const QUESTS = [
-  {id:'herd', title:'Room for two', giver:'Rowan', detail:'Rowan’s feeding pair has been separated by thorn growth. Clear the three Briar Seedlings at the pasture, then return to him.', reward:'70 memories · 2 tonics'},
+  {id:'herd', title:'Room for two', giver:'Rowan', detail:'Clear the three Briar Seedlings at the pasture north of Willowmere, then return to Rowan for your first spell and wand.', reward:'90 memories · Briarbind · Singing reed · 35 amber · 2 tonics'},
   {id:'seasons', title:'A world between seasons', giver:'Mara', detail:'Record wildlife in all four habitats. Observe a Barkjaw, Mantleback, Snowkeel, and Ventback, then return to Mara.', reward:'120 memories · the Wayfarer title'},
   {id:'seam', title:'Two sides of a meal', giver:'Mara', detail:'At the Steamward, clear the fallen branches from the narrow crossing. The Boundary Scavenger needs food from both sides.', reward:'90 memories · 1 tonic'},
 ];

@@ -4,7 +4,7 @@ import { Game } from '../src/game.js';
 import { SPECIES, SPELL_BY_ID } from '../src/data.js';
 import { createWorld, biomeAt, waterAt, canWalk, moveBody, HOME, seamX } from '../src/world.js';
 
-function battle(){const g=new Game();g.safeZonesEnabled=false;g.autoAttack=false;g.world.props=[];g.player.x=1080;g.player.y=855;g.creatures=g.creatures.filter(c=>c.type==='seedling').slice(0,2);g.creatures.forEach((c,i)=>Object.assign(c,{x:1120+i*20,y:855,homeX:1120+i*20,homeY:855}));g.target=g.creatures[0].id;return g;}
+function battle(){const g=new Game();g.learned=new Set(['bramble','bind','frost','ward','wave','siphon','renew','blink','fox']);g.stances=new Set(['ember','frost','siphon']);g.safeZonesEnabled=false;g.autoAttack=false;g.world.props=[];g.player.x=1080;g.player.y=855;g.creatures=g.creatures.filter(c=>c.type==='seedling').slice(0,2);g.creatures.forEach((c,i)=>Object.assign(c,{x:1120+i*20,y:855,homeX:1120+i*20,homeY:855}));g.target=g.creatures[0].id;return g;}
 const advance=(g,seconds)=>{for(let i=0;i<seconds/.05;i++)g.update(.05);};
 
 test('world and habitat placement are deterministic',()=>{const a=createWorld(),b=createWorld();assert.deepEqual(a,b);assert.ok(a.props.length>300);for(const c of a.creatures)if(['snowkeel','mantleback','ventback'].includes(c.type))assert.equal(biomeAt(c.x,c.y),SPECIES[c.type].habitat,c.type);assert.ok(canWalk(a,HOME.x,HOME.y));});
@@ -23,12 +23,25 @@ test('observations require proximity and award a single discovery',()=>{const g=
 test('the crossing removes its obstruction and restores both food reserves',()=>{const g=new Game();g.nearby=g.world.interactables.find(i=>i.kind==='crossing');g.interact();assert.ok(g.crossingOpen);assert.ok(g.world.props.find(p=>p.blockage).removed);const c=g.creatures.find(c=>c.type==='scavenger');Object.assign(c,{x:seamX(1370)-60,y:1370,cold:.1,warm:1});g.ecology(c,.05);assert.equal(c.cold,1);assert.equal(c.state,'feeding');});
 test('Snowkeels refuse to walk onto warm ground',()=>{const g=new Game();g.world.props=[];const c=g.creatures.find(c=>c.type==='snowkeel');c.x=seamX(1400)-.1;c.y=1400;const before=c.x;g.walkCreature(c,{x:c.x+100,y:c.y},1,50);assert.equal(c.x,before);});
 test('clearing the pasture releases the separated feeding partner',()=>{const g=new Game();const c=g.creatures.find(c=>c.separated);g.ecology(c,.05);assert.equal(c.state,'waiting at the thorns');g.creatures.filter(a=>a.quest==='herd').forEach(a=>a.dead=true);g.ecology(c,.05);assert.equal(c.state,'returning to partner');advance(g,14);assert.equal(c.separated,false);});
-test('authored animals start outside solid scenery',()=>{const g=new Game();for(const c of g.creatures)assert.ok(canWalk(g.world,c.x,c.y,5),c.type);});
+test('authored animals start outside solid scenery',()=>{const g=new Game();for(const c of g.creatures)assert.ok(canWalk(g.world,c.x,c.y,5,c),c.type);});
 test('death returns player home and preserves earned discoveries',()=>{const g=battle();g.observed.add('barkjaw');g.player.hp=1;g.damagePlayer(100);assert.equal(g.player.x,HOME.x);assert.equal(g.player.y,HOME.y);assert.equal(g.player.hp,120);assert.ok(g.observed.has('barkjaw'));assert.ok(g.player.invulnerable>0);});
-test('save round-trip preserves bindings, quests, restored crossings and defeated threats',()=>{const g=new Game();g.setBinding('e','fox');g.observed.add('barkjaw');g.quests.herd='complete';g.quests.seam='offered';g.nearby=g.world.interactables.find(i=>i.kind==='crossing');g.interact();g.hurt(g.creatures.find(c=>c.quest==='herd'),999);g.player.tonics=7;const restored=new Game(g.snapshot());assert.deepEqual(restored.snapshot(),g.snapshot());assert.ok(restored.world.props.find(p=>p.blockage).removed);});
+test('save round-trip preserves bindings, quests, restored crossings and defeated threats',()=>{const g=new Game();g.setBinding('e','fox');g.observed.add('barkjaw');g.quests.herd='complete';g.refreshHunts();g.quests.seam='offered';g.nearby=g.world.interactables.find(i=>i.kind==='crossing');g.interact();g.hurt(g.creatures.find(c=>c.quest==='herd'),999);g.player.tonics=7;const restored=new Game(g.snapshot());assert.deepEqual(restored.snapshot(),g.snapshot());assert.ok(restored.world.props.find(p=>p.blockage).removed);});
 test('malformed saves cannot inject invalid positions, spells or quest states',()=>{const g=new Game({version:1,player:{x:Infinity,y:-100,hp:-1,level:999},bindings:{q:'bogus'},quests:{herd:'garbage'},observed:'not an array'});assert.equal(g.player.x,HOME.x);assert.equal(g.player.hp,1);assert.equal(g.player.level,50);assert.equal(g.bindings.q,'bramble');assert.equal(g.quests.herd,'offered');assert.equal(g.observed.size,0);});
 test('a paused game freezes cooldowns and combat',()=>{const g=battle();g.setBinding('q','bind');g.cast('q');const time=g.time,cd=g.cooldowns.bind;g.paused=true;advance(g,3);assert.equal(g.time,time);assert.equal(g.cooldowns.bind,cd);assert.equal(g.cast('f'),false);});
 test('keyboard movement is normalized and updates facing',()=>{const g=battle(),x=g.player.x;g.update(.05,{right:true,up:true});assert.ok(Math.abs(Math.hypot(g.player.x-x,g.player.y-855)-4)<.01);assert.equal(g.player.direction,'up');});
+
+test('analog joystick movement scales speed, caps diagonals and yields to keyboard input',()=>{
+  const g=battle();g.creatures=[];const x=g.player.x,y=g.player.y;
+  g.update(.05,{x:.5,y:0});assert.ok(Math.abs(g.player.x-x-2)<.01);
+  const a={...g.player};g.update(.05,{x:1,y:1});assert.ok(Math.abs(Math.hypot(g.player.x-a.x,g.player.y-a.y)-4)<.01);
+  const b={...g.player};g.update(.05,{left:true,x:1,y:1});assert.ok(Math.abs(g.player.x-b.x+4)<.01);assert.equal(g.player.y,b.y);
+  g.update(.05);assert.equal(g.player.moving,false);assert.ok(g.player.y>y);
+});
+
+test('selecting another creature switches the next automatic shot to that target',()=>{
+  const g=battle();g.autoAttack=true;g.chooseTarget(g.creatures[0].id);g.shoot(true);assert.equal(g.projectiles.at(-1).target,g.creatures[0].id);
+  g.chooseTarget(g.creatures[1].id);g.boltCooldown=0;g.shoot(true);assert.equal(g.projectiles.at(-1).target,g.creatures[1].id);assert.equal(g.autoAttack,true);
+});
 
 test('click navigation walks around solid scenery and preserves automatic casting',()=>{
   const g=battle();g.creatures=[];g.autoAttack=true;g.world.props=[{x:1120,y:855,solid:14}];

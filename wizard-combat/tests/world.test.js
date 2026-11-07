@@ -5,6 +5,32 @@ import {TestingMode} from '../src/testing-mode.js';
 import {terrain,terrainNormal,biomeAt,POOLS,WORLD_HALF} from '../src/landscape.js';
 import {CAMPS,COVER} from '../src/data.js';
 import {floorAt,terrainHit} from '../src/physics.js';
+import {erodedOffset} from '../src/erosion.js';
+
+test('plains stay open and gently graded while authored tablelands have broad tops',()=>{
+  for(const [x,z] of [[-65,85],[85,65]]){
+    assert.ok(biomeAt(x,z).openness>.9);
+    for(let dx=-12;dx<=12;dx+=4)for(let dz=-12;dz<=12;dz+=4){
+      assert.ok(terrainNormal(x+dx,z+dz).y>.97);
+      assert.ok(terrain(x+dx,z+dz)<18);
+    }
+  }
+  const top=terrain(165,-60);
+  assert.ok(top>35);
+  for(let dx=-12;dx<=12;dx+=4)assert.ok(Math.abs(terrain(165+dx,-60)-top)<2);
+  assert.ok(top-terrain(235,-60)>20);
+});
+
+test('directional erosion is bounded, deterministic, and absent from flat or masked ground',()=>{
+  assert.equal(erodedOffset(31,42,50,0,0),0);
+  assert.equal(erodedOffset(31,42,50,.8,-.5,0),0);
+  for(let x=-100;x<=100;x+=5){
+    const h=erodedOffset(x,42,80,.8,-.5);
+    assert.ok(Number.isFinite(h)&&Math.abs(h)<13);
+    assert.equal(h,erodedOffset(x,42,80,.8,-.5));
+    assert.ok(Math.abs(h-erodedOffset(x+.001,42,80,.8,-.5))<.05);
+  }
+});
 
 test('collision heights follow the exact two triangles rendered in each ground cell',()=>{
   for(const [x,z] of [[-296,284],[204,-234],[306,300]]){

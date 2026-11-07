@@ -6,6 +6,7 @@ import {spellIcon} from './art/spells.js';
 import {paperdoll} from './art/figure.js';
 import {MONSTER_ART} from './monsters/index.js';
 import {mountSvg,svgMarkup,restPose,STATE} from './monsters/rig.js';
+import {HABITATS} from './habitats.js';
 
 const $=s=>document.querySelector(s);
 const el=(tag,cls,html='')=>{const n=document.createElement(tag);if(cls)n.className=cls;n.innerHTML=html;return n;};
@@ -158,12 +159,13 @@ export class JourneyUI{
     ctx.font='italic 20px "Cormorant Garamond", Georgia';ctx.fillStyle='#f2ecd4aa';for(const [i,court] of COURTS.entries()){const x=i===0||i===3?c-180:c+180,y=i<2?c-200:c+210;ctx.fillText(court.name,x,y);}
     ctx.fillStyle='#ffe8b0';ctx.shadowColor='#ffcf70';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(c,c,6,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
     this.mapMarks=[];
+    for(const h of HABITATS){const found=g.habitats.has(h.id),x=c+h.x*scale,y=c+h.z*scale;ctx.strokeStyle=found?h.color:'#b5c5a966';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,h.r*scale,0,Math.PI*2);ctx.stroke();ctx.fillStyle=found?h.color:'#b5c5a988';ctx.font='11px Georgia';ctx.fillText(found?h.name:'?',x,y-h.r*scale-5);this.mapMarks.push({habitat:h,x,y,found});}
     for(const [i,camp] of CAMPS.entries()){const found=g.discovered.has(i),done=g.cleared.has(i),x=c+camp.x*scale,y=c+camp.z*scale;this.mapMarks.push({i,x,y,found,done});
       if(!found){ctx.fillStyle='#0e1a1688';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();continue;}
       ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);ctx.fillStyle=done?'#e3cf8e':'#14201d';ctx.strokeStyle=done?'#5b4a24':'#e9dcb0';ctx.lineWidth=2;ctx.fillRect(-7,-7,14,14);ctx.strokeRect(-7,-7,14,14);ctx.restore();
       ctx.font='600 10px Inter, sans-serif';ctx.fillStyle=done?'#2a2010':'#f4ead0';ctx.fillText(done?'✓':String(camp.level),x,y+3.5);}
     const p=g.player,x=c+p.x*scale,y=c+p.z*scale;ctx.save();ctx.translate(x,y);ctx.rotate(-p.yaw);ctx.fillStyle='#ffffff';ctx.shadowColor='#000';ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,3);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
-    canvas._tip=()=>{const m=this.mapHover;if(!m)return '';const camp=CAMPS[m.i];if(!m.found)return '<p class="tip-sub">Undiscovered</p>';
+    canvas._tip=()=>{const m=this.mapHover;if(!m)return '';if(m.habitat)return m.found?`<h4>${m.habitat.name}</h4><p class="tip-desc">${m.habitat.detail}</p>`:'<p class="tip-sub">An unexplored living habitat</p>';const camp=CAMPS[m.i];if(!m.found)return '<p class="tip-sub">Undiscovered</p>';
       const counts={};camp.types.forEach(t=>counts[t]=(counts[t]||0)+1);
       return `<h4>${camp.name}</h4><p class="tip-sub">Level ${camp.level} · ${m.done?'Cleared':'Hostile'}</p><div class="tip-foes">${Object.entries(counts).map(([t,n])=>`<span>${this.portrait(t,'tiny')}<b>${n>1?n+'×':''}</b></span>`).join('')}</div>
         ${camp.reward?`<div class="tip-reward ${m.done?'claimed':''}"><span class="tip-icon r${itemRarity(camp.reward)}">${itemIcon(camp.reward)}</span><span>${ITEMS[camp.reward].name}</span></div>`:''}`;};
@@ -173,19 +175,20 @@ export class JourneyUI{
 
   // ---------- bestiary ----------
   portrait(type,cls=''){const art=MONSTER_ART[type];return art?`<span class="portrait ${cls}">${svgMarkup(art,restPose(art))}</span>`:`<span class="portrait emoji ${cls}">${SPECIES[type].emoji}</span>`;}
-  seenTypes(){const g=this.game,seen=new Set();for(const i of g.discovered)CAMPS[i].types.forEach(t=>seen.add(t));for(const t of Object.keys(g.killTypes))seen.add(t);return seen;}
+  seenTypes(){const g=this.game,seen=new Set();for(const i of g.discovered)CAMPS[i].types.forEach(t=>seen.add(t));for(const h of HABITATS)if(g.habitats.has(h.id))h.types.forEach(t=>seen.add(t));for(const t of Object.keys(g.killTypes))seen.add(t);return seen;}
   bestiary(){const g=this.game,seen=this.seenTypes(),grid=$('#beast-grid');if(!this.beast||!seen.has(this.beast))this.beast=[...seen][0];grid.replaceChildren();
     for(const type of Object.keys(SPECIES)){const known=seen.has(type),n=el('button',`beast ${known?'':'unknown'} ${type===this.beast?'active':''}`,known?this.portrait(type):'<span class="portrait emoji">?</span>');
+      n.setAttribute('aria-label',known?SPECIES[type].name:'Undiscovered creature');n.setAttribute('aria-pressed',String(type===this.beast));
       if(known){n.onclick=()=>{this.beast=type;this.bestiary();};n.classList.add('tipped');n._tip=()=>`<h4>${SPECIES[type].name}</h4><p class="tip-sub">${g.killTypes[type]||0} defeated</p>`;}grid.append(n);}
     this.beastDetail();}
   beastDetail(){const type=this.beast,box=$('#beast-stage'),info=$('#beast-info');if(!type){box.innerHTML='';info.innerHTML='';return;}
-    const s=SPECIES[type],levels=CAMPS.filter(c=>c.types.includes(type)).map(c=>c.level),lv=Math.min(...levels),hp=Math.round(s.hp*(1+(lv-1)*.1)),dmg=s.damage*(1+(lv-1)*.085),fire=this.game.stats().fire;
+    const s=SPECIES[type],levels=[...CAMPS.filter(c=>c.types.includes(type)),...HABITATS.filter(h=>h.types.includes(type))].map(c=>c.level),lv=Math.min(...levels),hp=Math.round(s.hp*(1+(lv-1)*.1)),dmg=s.damage*(1+(lv-1)*.085),fire=this.game.stats().fire;
     if(this.stageType!==type){this.stopStage();this.stageType=type;const art=MONSTER_ART[type];
       if(art){this.stage=mountSvg(art,box);this.stageState=STATE();this.stageT0=performance.now();const loop=now=>{this.stageRaf=requestAnimationFrame(loop);this.animateStage(art,(now-this.stageT0)/1000);};this.stageRaf=requestAnimationFrame(loop);}
       else box.innerHTML=`<span class="emoji-big">${s.emoji}</span>`;}
     const trait=(on,label)=>on?`<span class="trait">${label}</span>`:'';
     const stat=(label,value)=>`<div class="stat"><span>${label}</span><b>${value}</b></div>`;
-    info.innerHTML=`<h3>${s.name}</h3><p class="levels">Level ${[...new Set(levels)].join(', ')}</p>
+    info.innerHTML=`<h3>${s.name}</h3><p class="levels">Level ${[...new Set(levels)].join(', ')}</p>${s.ecology?`<p>${s.ecology}</p><p class="levels">${s.neutral?'Peaceful · defends itself or its nest':'Ambush predator · watch its hooks'}</p>`:''}
       ${stat('Health',`${hp}`)}${stat('Firebolts to defeat',`${Math.ceil(hp/fire)}`)}${stat('Damage',`${fmt(dmg)}${s.burst>1?` × ${s.burst}`:''}`)}${stat('Attack every',`${s.attack} s`)}${stat('Reach',`${s.reach} m`)}${stat('Speed',`${s.speed} m/s`)}${stat('Experience',`${Math.round(s.xp*(1+(lv-1)*.14))}`)}${stat('Defeated',`${this.game.killTypes[type]||0}`)}
       <div class="traits">${trait(s.ranged,'Ranged')}${trait(!s.ranged,'Melee')}${trait(s.dodge,'Dodges')}${trait(s.cover,'Uses cover')}${trait(s.flying,'Flying')}${trait(type==='healer','Heals allies')}${trait(type==='ice','Ice shell')}${trait(type==='ash','Fire resistant')}${trait(['titan','colossus'].includes(type),'Heavy')}</div>`;
   }
@@ -193,6 +196,6 @@ export class JourneyUI{
   animateStage(art,t){const s=this.stageState,k=t%7.2;Object.assign(s,STATE());s.t=t;s.seed=1;
     if(k>2&&k<4){s.move=Math.min(1,(k-2)*3,(4-k)*3);s.phase=t*(art.stride||3)*4;}
     if(k>4.4&&k<4.9)s.windup=(k-4.4)/.5;if(k>=4.9&&k<5.4)s.attack=1-(k-4.9)/.5;
-    if(k>6&&k<6.35)s.hurt=1-(k-6)/.35;this.stage.update(s);}
+    if(k>6&&k<6.35)s.hurt=1-(k-6)/.35;if(art.extra?.includes('heal')&&k>6.4&&k<7.2)s.heal=Math.sin((k-6.4)/.8*Math.PI);this.stage.update(s);}
   stopStage(){if(this.stageRaf)cancelAnimationFrame(this.stageRaf);this.stageRaf=null;this.stageType=null;}
 }

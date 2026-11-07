@@ -1,6 +1,7 @@
 import {solidSpan,hullHit,spatialIndex} from './cover-shapes.js';
-import {COVER,terrain,SHIELD} from './data.js';
+import {COVER,terrain,SHIELD,SPECIES} from './data.js';
 import {WORLD_HALF} from './landscape.js';
+import {approachVelocity,strideLength} from './locomotion.js';
 const coverQuery=spatialIndex(COVER);
 export const nearbyCover=(x,z,radius=0)=>coverQuery(x-radius,z-radius,x+radius,z+radius);
 const alongCover=(a,b,pad=0)=>coverQuery(Math.min(a.x,b.x)-pad,Math.min(a.z,b.z)-pad,Math.max(a.x,b.x)+pad,Math.max(a.z,b.z)+pad);
@@ -11,6 +12,21 @@ export const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
 export const normalize=v=>{const d=length(v)||1;return{x:v.x/d,y:v.y/d,z:v.z/d};};
 export const pointAt=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t});
 export function sphereHit(a,b,c,r){const d=subtract(b,a),m=subtract(a,c),cc=dot(m,m)-r*r;if(cc<=0)return 0;const aa=dot(d,d),bb=dot(m,d),disc=bb*bb-aa*cc;if(aa<1e-10||disc<0)return null;const t=(-bb-Math.sqrt(disc))/aa;return t>=0&&t<=1?t:null;}
+// Volumetric animals use oriented body/head ellipsoids matching their models.
+// The original painted creatures retain their established spherical hit region.
+export function enemyHit(a,b,e,pad=0){
+  const s=SPECIES[e.type],r=s.size*(s.model3d?1.2:.34)+pad;
+  // Conservative segment bounds discard distant actors before allocating narrow-phase shapes.
+  if(e.x<Math.min(a.x,b.x)-r||e.x>Math.max(a.x,b.x)+r||e.z<Math.min(a.z,b.z)-r||e.z>Math.max(a.z,b.z)+r||e.y<Math.min(a.y,b.y)-r||e.y>Math.max(a.y,b.y)+r)return null;
+  if(!s.model3d)return sphereHit(a,b,e,s.size*.34+pad);
+  const low=e.type==='rootknife'||e.type==='snowkeel',height=low?.3:.57;
+  const boxes=[{x:0,y:height,z:0,rx:low?.3:.43,ry:low?.19:.35,rz:e.type==='rootknife'?.85:.63},{x:0,y:height+.02,z:.66,rx:low?.23:.3,ry:low?.15:.27,rz:.32}];
+  if(e.type==='snowkeel')boxes.push({x:0,y:.6,z:-.1,rx:.18,ry:.43,rz:.44});
+  const cy=Math.cos(e.heading||0),sy=Math.sin(e.heading||0),size=s.size;
+  let first=null;
+  for(const box of boxes){const convert=p=>{const dx=p.x-e.x,dz=p.z-e.z;return {x:(cy*dx-sy*dz-box.x*size)/(box.rx*size+pad),y:(p.y-(e.y-size*.5)-box.y*size)/(box.ry*size+pad),z:(sy*dx+cy*dz-box.z*size)/(box.rz*size+pad)};};const t=sphereHit(convert(a),convert(b),{x:0,y:0,z:0},1);if(t!==null&&(first===null||t<first))first=t;}
+  return first;
+}
 export function boxHit(a,b,r,pad=0,flat=false){
   if(r.planes&&!flat)return hullHit(a,b,r,pad);
   let lo=0,hi=1;const bounds={x:[r.x-r.w/2-pad,r.x+r.w/2+pad],y:[r.base,r.top],z:[r.z-r.d/2-pad,r.z+r.d/2+pad]};
@@ -33,7 +49,7 @@ export function moveBody(body,dx,dz,radius,feet,height=1.7,step=.28){
   return level;
 }
 // Local corner routing: keep a waypoint until reached, then choose the next visible corner.
-export function navigate(e,goal,step,radius){
+export function navigate(e,goal,step,radius,dt=1/30){
   let target=goal;
   if(e.waypoint&&Math.hypot(e.x-e.waypoint.x,e.z-e.waypoint.z)>.45&&Math.hypot(e.goalX-goal.x,e.goalZ-goal.z)<1)target=e.waypoint;
   else{
@@ -51,8 +67,17 @@ export function navigate(e,goal,step,radius){
       candidates.sort((a,b)=>a.score-b.score);if(candidates.length){target=candidates[0].p;e.waypoint=target;}
     }
   }
-  const d=Math.hypot(target.x-e.x,target.z-e.z);if(d<.05)return;
-  const feet=terrain(e.x,e.z);moveBody(e,(target.x-e.x)/d*Math.min(d,step),(target.z-e.z)/d*Math.min(d,step),radius,feet,1.7,.3);
+  const d=Math.hypot(target.x-e.x,target.z-e.z);if(d<.05||dt<=0)return;
+  const s=SPECIES[e.type],size=s?.size||radius/.23,speed=step/dt;
+  // Brake into a waypoint, and let articulated animals turn before accelerating.
+  const facing=s?.model3d?Math.max(.15,Math.cos(Math.atan2(target.x-e.x,target.z-e.z)-(e.heading||0))):1;
+  const gait=s?.flying?1:1+.055*Math.sin((e.walkDistance||0)/strideLength(size)*Math.PI*4);
+  const pace=Math.min(speed,Math.sqrt(2*speed*5*d))*facing*gait;
+  const v=approachVelocity(e.navVX||0,e.navVZ||0,(target.x-e.x)/d*pace,(target.z-e.z)/d*pace,Math.max(8,speed*6),dt);
+  const ox=e.x,oz=e.z,limit=Math.min(1,d/(Math.hypot(v.x,v.z)*dt||1));
+  const feet=terrain(e.x,e.z);moveBody(e,v.x*dt*limit,v.z*dt*limit,radius,feet,Math.max(1.7,size),.3);
+  e.navVX=(e.x-ox)/dt;e.navVZ=(e.z-oz)/dt;e.walked=true;
+  e.walkDistance=(e.walkDistance||0)+Math.hypot(e.x-ox,e.z-oz);
 }
 
 // A forward-facing ellipse, swept against the incoming projectile segment.

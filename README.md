@@ -11,7 +11,7 @@ Use the small **Fullscreen** button at the top right of the picker, in the 3D ga
 
 **[Play FallRPG in your browser](https://ka2le.github.io/FallRPG/)** · [Source on GitHub](https://github.com/ka2le/FallRPG)
 
-Both games support desktop and touch controls. The 3D game uses an invisible movement joystick in the bottom third and swipe-to-look above; the pixel game uses tap-to-move. The 3D game requires WebGL. Progress saves in the current browser.
+Both games support desktop and touch controls. The 3D game uses an invisible movement joystick in the bottom third and swipe-to-look above; the pixel game uses a hold-and-drag joystick anywhere, taps for interaction, and pinch zoom. The 3D game requires WebGL. Progress saves in the current browser.
 
 ```powershell
 cd wizard-combat

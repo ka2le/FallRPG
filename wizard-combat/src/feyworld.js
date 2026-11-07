@@ -1,5 +1,8 @@
 import {hullGeometry} from './cover-shapes.js';
 import {buildGround} from './ground.js';
+import {forestMaterial,treeGeometry,forestRange,TREE_BLEND,TREE_CULL_MARGIN} from './forest-lod.js';
+import {buildEcology,updateEcologyVisuals} from './ecology-render.js';
+import {buildWorldLife,updateWorldLife} from './life-render.js';
 import * as THREE from 'three';
 import {generateTreeKind} from './fey/render/treeGen.js';
 import {makeBarkTextures,makeLeafCardTexture,makeCapTexture,makeRockTexture,makeFlowerTexture} from './fey/render/textures.js';
@@ -54,15 +57,38 @@ export function buildFeyWorld(world){
   const kinds=Object.keys(palettes),records=new Map(kinds.map(k=>[k,[]]));
   for(const t of SCENERY.trees)records.get(t.kind).push({...t,color:new THREE.Color(palettes[t.kind]).multiplyScalar(t.tint)});
   world.forest=[];const dummy=new THREE.Object3D(),color=new THREE.Color();
+  world.forestUniforms={treeDetail:{value:55},treeRange:{value:forestRange(220)}};
+  const forestFrustum=new THREE.Frustum(),forestMatrix=new THREE.Matrix4(),treeSphere=new THREE.Sphere();
   for(const [kind,trees] of records){
     const gen=generateTreeKind(kind,31+kinds.indexOf(kind)*17);let highMats,lowMats;
     if(kind==='mushroom'){highMats=[birchMat,material('#ffffff',{map:makeCapTexture(4)}),material('#bddfe6',{emissive:'#517d83',emissiveIntensity:.4})];lowMats=highMats;}
     else if(kind==='crystal'){highMats=[material('#9da8bf',{metalness:.15}),material('#ffffff',{emissive:'#548cb0',emissiveIntensity:.3,metalness:.25,roughness:.3})];lowMats=highMats;}
-    else{highMats=[kind==='pine'?birchMat:barkMat,leafMat(leafMaps[kind==='blossom'?'blossom':kind==='pine'?'needle':'broad'],'#ffffff')];lowMats=kind==='pine'?[highMats[0],material('#ffffff')]:highMats;}
-    const hi=new THREE.InstancedMesh(gen.high,highMats,trees.length),lo=new THREE.InstancedMesh(gen.low,lowMats,trees.length);
-    for(const m of [hi,lo]){m.frustumCulled=false;m.count=0;m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(m);}world.forest.push({trees,hi,lo});
+    else{highMats=[kind==='pine'?birchMat:barkMat,leafMat(leafMaps[kind==='blossom'?'blossom':kind==='pine'?'needle':'broad'],'#ffffff')];lowMats=highMats;}
+    const canopyMats=highMats.map(m=>forestMaterial(m,world.forestUniforms));
+    lowMats=lowMats.map(m=>forestMaterial(m,world.forestUniforms,false));
+    highMats=highMats.map(m=>forestMaterial(m,world.forestUniforms,true));
+    const hi=new THREE.InstancedMesh(treeGeometry(gen.high,false),highMats,trees.length),lo=new THREE.InstancedMesh(treeGeometry(gen.low,false),lowMats,trees.length),canopy=new THREE.InstancedMesh(treeGeometry(gen.high,true),canopyMats,trees.length);
+    for(const t of trees){dummy.position.set(t.x,t.y,t.z);dummy.rotation.set(0,t.rot,0);dummy.scale.setScalar(t.scale);dummy.updateMatrix();t.bounds=gen.high.boundingSphere.clone().applyMatrix4(dummy.matrix);}
+    for(const m of [hi,lo,canopy]){m.frustumCulled=false;m.count=0;m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(m);}world.forest.push({trees,hi,lo,canopy});
   }
-  world.updateForest=()=>{const p=world.game.player;for(const batch of world.forest){let nh=0,nl=0;for(const t of batch.trees){const d=Math.hypot(t.x-p.x,t.z-p.z);if(d>world.viewDistance)continue;const m=d<world.treeDetail?batch.hi:batch.lo,index=d<world.treeDetail?nh++:nl++;dummy.position.set(t.x,t.y,t.z);dummy.rotation.set(0,t.rot,0);dummy.scale.setScalar(t.scale);dummy.updateMatrix();m.setMatrixAt(index,dummy.matrix);m.setColorAt(index,t.color);}batch.hi.count=nh;batch.lo.count=nl;for(const m of [batch.hi,batch.lo]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}}};
+  world.updateForest=()=>{
+    const p=world.game.player,range=forestRange(world.viewDistance);
+    world.forestOrigin={x:p.x,z:p.z,yaw:p.yaw,pitch:p.pitch};
+    forestFrustum.setFromProjectionMatrix(forestMatrix.multiplyMatrices(world.camera.projectionMatrix,world.camera.matrixWorldInverse));
+    for(const batch of world.forest){
+      let nh=0,nl=0,nc=0;
+      for(const t of batch.trees){
+        const d=Math.hypot(t.x-p.x,t.z-p.z);if(d>range+TREE_CULL_MARGIN)continue;
+        treeSphere.copy(t.bounds);treeSphere.radius+=8+d*.2;if(!forestFrustum.intersectsSphere(treeSphere))continue;
+        dummy.position.set(t.x,t.y,t.z);dummy.rotation.set(0,t.rot,0);dummy.scale.setScalar(t.scale);dummy.updateMatrix();
+        batch.canopy.setMatrixAt(nc,dummy.matrix);batch.canopy.setColorAt(nc++,t.color);
+        if(d<world.treeDetail+TREE_BLEND+TREE_CULL_MARGIN){batch.hi.setMatrixAt(nh,dummy.matrix);batch.hi.setColorAt(nh++,t.color);}
+        if(d>world.treeDetail-TREE_BLEND-TREE_CULL_MARGIN){batch.lo.setMatrixAt(nl,dummy.matrix);batch.lo.setColorAt(nl++,t.color);}
+      }
+      batch.hi.count=nh;batch.lo.count=nl;batch.canopy.count=nc;
+      for(const m of [batch.hi,batch.lo,batch.canopy]){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;}
+    }
+  };
   world.treeDetail=55;world.viewDistance=220;world.updateForest();world.forestTimer=0;
   // Instanced grass and flowers in independently culled tiles.
   const blade=new THREE.BufferGeometry();blade.setAttribute('position',new THREE.Float32BufferAttribute([-.035,0,0,.035,0,0,.04,.34,0,0,0,-.035,0,0,.035,-.03,.27,.02,-.05,0,-.03,.01,0,.03,-.06,.23,0],3));blade.computeVertexNormals();
@@ -79,10 +105,16 @@ export function buildFeyWorld(world){
   for(let i=0;i<7;i++){const a=i/7*Math.PI*2,x=Math.sin(a)*4,z=Math.cos(a)*4;mesh(new THREE.DodecahedronGeometry(.65,0),stone,x,terrain(x,z)+.4,z);}
   world.landmarks=[];for(const [i,c] of CAMPS.entries()){const ring=mesh(new THREE.TorusGeometry(1.1,.07,5,32),material('#b6dcc9',{emissive:'#6bb6b4',emissiveIntensity:.5}),c.x,terrain(c.x,c.z)+.14,c.z);ring.rotation.x=Math.PI/2;world.landmarks.push({mesh:ring,camp:i});}
   const motesGeo=new THREE.BufferGeometry(),points=[];for(let i=0;i<160;i++)points.push((rng()-.5)*80,rng()*8,(rng()-.5)*80);motesGeo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));world.motes=new THREE.Points(motesGeo,new THREE.PointsMaterial({color:'#c5e9d4',size:.08,transparent:true,opacity:.6,depthWrite:false}));scene.add(world.motes);
+  buildEcology(world);
+  buildWorldLife(world);
 }
 export function updateFeyWorld(world,dt){
   const p=world.game.player;world.feyClock.value+=dt;world.feySky.position.copy(world.camera.position);world.hearth.rotation.y+=dt*.4;world.hearth.position.y=terrain(0,0)+2+Math.sin(world.feyClock.value)*.15;
+  world.forestUniforms.treeDetail.value=world.treeDetail;world.forestUniforms.treeRange.value=forestRange(world.viewDistance);
+  if(Math.hypot(p.x-world.forestOrigin.x,p.z-world.forestOrigin.z)>TREE_CULL_MARGIN*.5||Math.abs(p.yaw-world.forestOrigin.yaw)>.08||Math.abs(p.pitch-world.forestOrigin.pitch)>.08)world.forestTimer=0;
   world.forestTimer-=dt;if(world.forestTimer<=0){world.updateForest();world.forestTimer=.35;for(const tile of world.groundTiles){const near=Math.hypot(tile.x-p.x,tile.z-p.z)<world.viewDistance*.65;tile.grass.visible=tile.flowers.visible=near;}for(const l of world.landmarks)l.mesh.material.color.set(world.game.cleared.has(l.camp)?'#d6b477':'#b6dcc9');}
   world.motes.position.set(p.x,terrain(p.x,p.z),p.z);world.motes.rotation.y+=dt*.01;
+  updateEcologyVisuals(world,dt);
+  world.lifeTimer=(world.lifeTimer||0)-dt;if(world.lifeTimer<=0){updateWorldLife(world);world.lifeTimer=.35;}
 }
 

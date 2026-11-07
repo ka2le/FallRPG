@@ -2,11 +2,15 @@ import { PLACES, SPECIES } from './data.js';
 import { EXPANSION_PATHS, EXPANSION_PLACES, CAMP_SITES, REGION_SITES, WATER_PATCHES, LAVA_PATCHES } from './regions.js';
 import { TREE_FAMILIES, SEASONAL_TREES, DECORATION_POOLS, WILDS_ASSETS } from './environment-catalog.js';
 import { MORE_SPECIES, CREATURE_VARIANTS } from './expansion-monsters.js';
+import { ADVENTURE_PATHS, ENCOUNTERS } from './adventure.js';
+import { WORLD_SIZE, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, frontierAt, inFrontier } from './frontier.js';
+import { populateFrontier } from './frontier-world.js';
+import { plantRootwalls } from './rootwall-layout.js';
 
-export const WIDTH=6000, HEIGHT=4200;
+export const WIDTH=WORLD_SIZE.width, HEIGHT=WORLD_SIZE.height;
 const LEGACY_WIDTH=2400,LEGACY_HEIGHT=1800;
 export const HOME={x:1080,y:855};
-export const inVillage=point=>Math.hypot((point.x-HOME.x)/1.15,point.y-HOME.y)<210||CAMP_SITES.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius);
+export const inVillage=point=>Math.hypot((point.x-HOME.x)/1.15,point.y-HOME.y)<210||CAMP_SITES.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius)||FRONTIER_CAMPS.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius);
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function random(seed=9281){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -17,6 +21,8 @@ export const seasonY=x=>1030+Math.sin(x*.004)*80;
 export const riverX=y=>620+Math.sin(y*.006)*88+Math.sin(y*.013)*25;
 const inside=(x,y,cx,cy,rx,ry)=>((x-cx)/rx)**2+((y-cy)/ry)**2<1;
 export function biomeAt(x,y){
+  if(inFrontier(x,y))return frontierAt(x,y).biome;
+  if(x>6000)return 'ember';
   let biome=y<seasonY(x)?(x<seamX(y)?'spring':'autumn'):(x<seamX(y)?'winter':'ember');
   if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)return biome;
   // Permanent domains have irregular, stable margins. Their resources cross the seam.
@@ -34,16 +40,26 @@ const LEGACY_PATHS=[
   [{x:1460,y:870},{x:1570,y:640},{x:1810,y:415}],
   [{x:580,y:850},{x:460,y:650},{x:465,y:390}],
 ];
-export const PATHS=[...LEGACY_PATHS,...EXPANSION_PATHS];
+export const PATHS=[...LEGACY_PATHS,...EXPANSION_PATHS,...ADVENTURE_PATHS,...FRONTIER_PATHS];
 export function segmentDistance(x,y,a,b){const dx=b.x-a.x,dy=b.y-a.y,t=clamp(((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy),0,1);return Math.hypot(x-a.x-dx*t,y-a.y-dy*t);}
-function distanceToPaths(x,y,paths){let d=1e9;for(const path of paths)for(let i=1;i<path.length;i++)d=Math.min(d,segmentDistance(x,y,path[i-1],path[i]));return d;}
+const pathIndexes=new WeakMap(),PATH_CELL=256;
+function distanceToPaths(x,y,paths){
+  let index=pathIndexes.get(paths);
+  if(!index){index=new Map();for(const path of paths)for(let i=1;i<path.length;i++){
+    const a=path[i-1],b=path[i];
+    for(let gx=Math.floor((Math.min(a.x,b.x)-PATH_CELL)/PATH_CELL);gx<=Math.floor((Math.max(a.x,b.x)+PATH_CELL)/PATH_CELL);gx++)for(let gy=Math.floor((Math.min(a.y,b.y)-PATH_CELL)/PATH_CELL);gy<=Math.floor((Math.max(a.y,b.y)+PATH_CELL)/PATH_CELL);gy++){
+      const key=`${gx},${gy}`;if(!index.has(key))index.set(key,[]);index.get(key).push([a,b]);
+    }
+  }pathIndexes.set(paths,index);}
+  let d=PATH_CELL;for(const [a,b] of index.get(`${Math.floor(x/PATH_CELL)},${Math.floor(y/PATH_CELL)}`)||[])d=Math.min(d,segmentDistance(x,y,a,b));return d;
+}
 export function pathDistance(x,y){return distanceToPaths(x,y,PATHS);}
 const legacyPathDistance=(x,y)=>distanceToPaths(x,y,LEGACY_PATHS);
 export const BRIDGES=[850,1420,2830,3150,3700].map((y,i)=>({x:riverX(y),y,width:i<2?120:128,depth:i===0?50:48}));
 export function bridgeAt(x,y){return BRIDGES.some(b=>Math.abs(x-b.x)<b.width/2&&Math.abs(y-b.y)<b.depth/2);}
 export function waterAt(x,y){if(bridgeAt(x,y))return false;return Math.abs(x-riverX(y))<23+noise(x,y,110)*9||Math.hypot((x-370)*.9,(y-340)*1.2)<102||Math.hypot((x-1710)*1.1,(y-700)*.8)<76||WATER_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry));}
 export function lavaAt(x,y){return biomeAt(x,y)==='ember'&&((Math.hypot((x-2060)*.8,(y-1510)*1.1)<110+noise(x,y,60)*30)||(x>2130&&x<LEGACY_WIDTH&&y>1080&&y<1130+Math.sin(x*.018)*26)||LAVA_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)));}
-export function regionAt(x,y){return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
+export function regionAt(x,y){if(inFrontier(x,y))return frontierAt(x,y);return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
 export function terrainAt(x,y){const biome=biomeAt(x,y),path=pathDistance(x,y),site=regionAt(x,y);return {biome,path,water:waterAt(x,y),lava:lavaAt(x,y),bridge:bridgeAt(x,y),wet:noise(x+490,y-93,130),height:noise(x,y,250),microhabitat:site?.kind||null,region:site?.id||null};}
 
 export function createWorld(){
@@ -142,8 +158,40 @@ export function createWorld(){
   for(let n=0;n<50;n++){const x=120+rand()*2160,y=160+rand()*1480;if(waterAt(x,y)||lavaAt(x,y))continue;const b=biomeAt(x,y),sprite=b==='winter'?(rand()<.5?50:55):b==='ember'?54:b==='spring'?[48,49,51,52,53][n%5]:[48,51,54][n%3];ambient.push({x,y,sprite,phase:rand()*6.28});}
   const world={props,creatures,interactables,ambient,places:PLACES};
   expandWorld(world,add);
+  populateFrontier(world,add,{WIDTH,HEIGHT,random,noise,biomeAt,pathDistance,canWalk,propsNear,inVillage});
+  addAdventure(world,add);
+  plantRootwalls(world,{canWalk,biomeAt,inVillage,propsNear,segmentDistance});
   return world;
 }
+
+function addAdventure(world,add){
+  // Open a continuous winding footpath, leaving dense forest on both sides.
+  for(const p of world.props)if(p.solid&&!p.label&&!p.building&&!p.blockage&&pathDistance(p.x,p.y)<p.solid+22)p.removed=true;
+  for(const camp of ENCOUNTERS){
+    for(const p of propsNear(world,camp.x,camp.y,75))if(p.solid&&!p.label&&!p.building&&!p.blockage&&dist(p,camp)<62)p.removed=true;
+    add(0,camp.x+42,camp.y+38,28,{atlas:'wilds',art:48,solid:0});
+    world.interactables.push({id:`sign-${camp.id}`,kind:'lore',name:`${camp.name} · Level ${camp.level}`,x:camp.x+42,y:camp.y+38,text:`${camp.name}. Level ${camp.level}${camp.elite?' — elite guardian':''}. Clear this hunting ground for the ${HUNT_TITLE(camp.hunt)} bounty. Return to safety to restock between fights.`});
+    camp.types.forEach((type,n)=>{
+      for(let attempt=0;attempt<80;attempt++){
+        const angle=n*2.4+attempt*.9,r=attempt===0?20:20+attempt*.7,x=camp.x+Math.cos(angle)*r,y=camp.y+Math.sin(angle)*r;
+        if(!canWalk(world,x,y,8)||biomeAt(x,y)!==SPECIES[type].habitat||inVillage({x,y})||world.creatures.some(c=>dist(c,{x,y})<22))continue;
+        world.creatures.push({id:`encounter-${camp.id}-${n}`,type,x,y,homeX:x,homeY:y,phase:n*2,camp:camp.id,level:camp.level,elite:camp.elite&&n===0,name:camp.elite&&n===0?camp.name:undefined});break;
+      }
+    });
+  }
+  // Roadside packs make expeditions a series of fights rather than empty transit.
+  const rand=random(77013);
+  for(const [route,path] of [...EXPANSION_PATHS,...ADVENTURE_PATHS,...FRONTIER_PATHS].entries())for(let i=1;i<path.length;i++){
+    const a=path[i-1],b=path[i],length=dist(a,b);
+    for(let step=160;step<length;step+=240){
+      const t=step/length,x=a.x+(b.x-a.x)*t+18,y=a.y+(b.y-a.y)*t+18;
+      if(inVillage({x,y})||ENCOUNTERS.some(c=>dist(c,{x,y})<175)||world.creatures.some(c=>!SPECIES[c.type].neutral&&dist(c,{x,y})<130))continue;
+      const type={spring:'seedling',autumn:'prowler',winter:'stormbell',ember:'wyrm'}[biomeAt(x,y)];
+      for(let n=0;n<2;n++){const px=x+n*27,py=y+(rand()-.5)*24;if(!canWalk(world,px,py,5)||biomeAt(px,py)!==SPECIES[type].habitat)continue;world.creatures.push({id:`patrol-${route}-${i}-${step}-${n}`,type,x:px,y:py,homeX:px,homeY:py,phase:rand()*6.28,patrol:true});}
+    }
+  }
+}
+const HUNT_TITLE=id=>id.split('-').join(' ');
 
 function expandWorld(world,add){
   const rand=random(612708),pick=list=>list[Math.floor(rand()*list.length)],{props,creatures,interactables,ambient}=world;
@@ -159,8 +207,8 @@ function expandWorld(world,add){
     Object.assign(prop,asset,{family,flip:hash(prop.x|0,19)>.5,size:Math.round(asset.size*.88)});
   }
   // Local groves alternate with open browsing ground and wet pockets.
-  for(let n=0;n<4800;n++){
-    const x=65+rand()*(WIDTH-130),y=90+rand()*(HEIGHT-180);
+  for(let n=0;n<6900;n++){
+    const x=65+rand()*(CORE_SIZE.width-130),y=90+rand()*(CORE_SIZE.height-180);
     if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)continue;
     const site=regionAt(x,y),b=biomeAt(x,y),density=noise(x+174,y-31,250),pd=pathDistance(x,y);
     if(pd<35||waterAt(x,y)||lavaAt(x,y)||CAMP_SITES.some(c=>dist(c,{x,y})<125)||EXPANSION_PLACES.some(p=>dist(p,{x,y})<55))continue;
@@ -168,8 +216,8 @@ function expandWorld(world,add){
     const families=site?.biome===b?site.families:SEASONAL_TREES[b];tree(pick(families),x,y);
   }
   // A separate low layer follows habitat resources, with clear patches between clumps.
-  for(let n=0;n<4100;n++){
-    const x=60+rand()*(WIDTH-120),y=90+rand()*(HEIGHT-180);if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)continue;
+  for(let n=0;n<5900;n++){
+    const x=60+rand()*(CORE_SIZE.width-120),y=90+rand()*(CORE_SIZE.height-180);if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)continue;
     const b=biomeAt(x,y),pd=pathDistance(x,y);if(pd<26||waterAt(x,y)||lavaAt(x,y)||CAMP_SITES.some(c=>dist(c,{x,y})<110)||noise(x,y,65)<.39)continue;
     const pool=DECORATION_POOLS[b],asset=pick(pool);if(propsNear(world,x,y,24).some(p=>p.solid&&dist(p,{x,y})<p.solid+8))continue;
     put(asset,x,y,{resource:asset.name,vegetation:!asset.solid,size:Math.round(asset.size*(.8+rand()*.45)),flip:rand()<.5});
@@ -232,7 +280,7 @@ function expandWorld(world,add){
     }
   }
   for(let n=0;n<230;n++){
-    const x=100+rand()*(WIDTH-200),y=120+rand()*(HEIGHT-240);if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT||!free(x,y,2))continue;
+    const x=100+rand()*(CORE_SIZE.width-200),y=120+rand()*(CORE_SIZE.height-240);if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT||!free(x,y,2))continue;
     const b=biomeAt(x,y),sprite=b==='winter'?pick([50,55]):b==='ember'?54:pick([48,49,51,52,53]);ambient.push({x,y,sprite,phase:rand()*6.28});
   }
   // The continuation of a maintained road cannot be blocked by a random tree.
@@ -257,18 +305,29 @@ export function propsNear(world,x,y,r=80){
   }
   return out;
 }
-export function canWalk(world,x,y,r=8){
+export function movingCoverNear(world,x,y,r=80){
+  if(!world.rootwallLive||world.rootwallActors?.()!==world.rootwallSource)return [];
+  const out=[];
+  for(const g of world.rootwallGroups||[]){
+    if(Math.min(Math.hypot(x-g.a.x,y-g.a.y),Math.hypot(x-g.b.x,y-g.b.y))>r+500)continue;
+    for(const c of g.members)if(!c.dead&&world.rootwallActive.has(c)&&Math.abs(c.x-x)<=r+c.solid&&Math.abs(c.y-y)<=r+c.solid)out.push(c);
+  }
+  return out;
+}
+export function canWalk(world,x,y,r=8,ignore=null){
   if(x<30||y<40||x>WIDTH-30||y>HEIGHT-30||waterAt(x,y)||lavaAt(x,y))return false;
   for(const p of propsNear(world,x,y,sceneryIndex(world).maxSolid+r)){if(!p.solid||p.removed)continue;if(Math.hypot((x-p.x),(y-p.y)*1.4)<p.solid+r)return false;}
+  for(const c of movingCoverNear(world,x,y,r+20))if(c!==ignore&&Math.hypot(x-c.x,y-c.y)<c.solid+r-.001)return false;
   for(const wall of world.barriers||[])if(wall.life>0&&segmentDistance(x,y,wall.a,wall.b)<r+6)return false;
   return true;
 }
 export function moveBody(world,body,dx,dy,r=8){
   // Substeps keep high-speed movement and Mothstep from tunneling through roots.
   const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));
-  for(let i=0;i<steps;i++){if(canWalk(world,body.x+dx/steps,body.y,r))body.x+=dx/steps;if(canWalk(world,body.x,body.y+dy/steps,r))body.y+=dy/steps;}
+  for(let i=0;i<steps;i++){if(canWalk(world,body.x+dx/steps,body.y,r,body))body.x+=dx/steps;if(canWalk(world,body.x,body.y+dy/steps,r,body))body.y+=dy/steps;}
 }
-export function lineClear(world,a,b,margin=8){
+export function lineClear(world,a,b,margin=8,ignore=null){
   const d=dist(a,b),radius=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y))/2+sceneryIndex(world).maxSolid,candidates=propsNear(world,(a.x+b.x)/2,(a.y+b.y)/2,radius).filter(p=>p.solid&&!p.removed);
-  for(let i=0;i<=d;i+=4){const t=d?i/d:0,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;if(i>=margin&&i<=d-margin&&candidates.some(p=>Math.hypot(x-p.x,(y-p.y)*1.4)<p.solid))return false;if((world.barriers||[]).some(w=>w.life>0&&segmentDistance(x,y,w.a,w.b)<7))return false;}return true;
+  const moving=movingCoverNear(world,(a.x+b.x)/2,(a.y+b.y)/2,radius).filter(c=>c!==a&&c!==b&&c!==ignore);
+  for(let i=0;i<=d;i+=4){const t=d?i/d:0,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;if(i>=margin&&i<=d-margin&&(candidates.some(p=>Math.hypot(x-p.x,(y-p.y)*1.4)<p.solid)||moving.some(c=>Math.hypot(x-c.x,y-c.y)<c.solid)))return false;if((world.barriers||[]).some(w=>w.life>0&&segmentDistance(x,y,w.a,w.b)<7))return false;}return true;
 }

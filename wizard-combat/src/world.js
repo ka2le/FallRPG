@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {CAMPS,COVER,SPECIES,SPELLS,SHIELD,terrain,seeded} from './data.js';
 import {MONSTER_ART} from './monsters/index.js';
 import {createRig,poseRig,setLod,STATE} from './monsters/rig.js';
+import {createCreature3D} from './monsters/ecological-3d.js';
 
 function texture(draw,w=256,h=256){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 const HIT=new THREE.Color(2.3,2.2,2),STUN=new THREE.Color(.78,.92,1.18),DRAIN=new THREE.Color(1.12,.84,1.22),ROOT=new THREE.Color(.86,1.06,.78),SLOW=new THREE.Color(.82,.96,1.16),PLAIN=new THREE.Color(1,1,1);
@@ -57,6 +58,7 @@ export class World {
     const s=SPECIES[e.type],art=MONSTER_ART[e.type],group=new THREE.Group();
     const shadow=this.mesh(new THREE.CircleGeometry(s.size*.36,20),new THREE.MeshBasicMaterial({color:'#101f1d',opacity:.25,transparent:true,depthWrite:false}),0,0,0,group);shadow.rotation.x=-Math.PI/2;shadow.renderOrder=-1;
     this.scene.add(group);
+    if(s.model3d){const model=createCreature3D(e.type);group.add(model.root);return {group,shadow,model};}
     if(art){
       // Painted rig: billboard turns to the camera, `facing` flips side-view art toward its travel direction.
       const rig=createRig(art,s.size),facing=new THREE.Object3D();facing.add(rig.root,rig.lod);group.add(facing);
@@ -79,6 +81,9 @@ export class World {
     st.t=this.game.time+v.seed;st.seed=v.seed;st.move=alive?Math.min(1,v.speed/(def.speed*.75)):0;
     st.windup=e.windup>0?Math.min(1,st.windup+dt*5):Math.max(0,st.windup-dt*7);
     st.attack=v.attack;st.hurt=v.hurt;st.stun=alive&&e.freeze>0?1:0;st.root=e.root>0?1:0;st.slow=e.slow>0?1:0;st.dead=alive?0:Math.min(1,v.deadT/.85);
+    // Species states: heal pulse, broken ice shell, quenched lanterns, a flyer knocked to the ground.
+    v.heal=Math.max(0,(v.heal||0)-dt*.9);st.heal=v.heal>0?Math.sin((1-v.heal)*Math.PI):0;const settle=1-Math.exp(-6*dt);
+    st.thaw+=((e.shell?0:1)-st.thaw)*settle;st.quench+=((e.quench>0?1:0)-st.quench)*settle;st.grounded+=((def.flying&&e.ground>0?1:0)-st.grounded)*settle;
     const right={x:Math.cos(yaw),z:-Math.sin(yaw)};
     st.dodge=e.dodgeTime>0&&def.dodge?Math.sign(e.dodgeX*right.x+e.dodgeZ*right.z)*Math.sin((1-e.dodgeTime/def.dodge.duration)*Math.PI):0;
     if(art.side){const lateral=(dx*right.x+dz*right.z)/(dt||1);if(Math.abs(lateral)>1.2)v.flip=lateral>0?-1:1;}
@@ -121,6 +126,7 @@ export class World {
         for(let i=0;i<24;i++){const dir=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize().multiplyScalar(9);this.particle(ev.at,ev.color,.25,.5,dir);}
       }
       if(ev.type==='shot'||ev.type==='hit'){const v=this.enemies.get(ev.enemy);if(v?.rig){if(ev.type==='shot')v.attack=1;else v.hurt=1;}}
+      if(ev.type==='heal'){const v=this.enemies.get(ev.enemy);if(v?.rig)v.heal=1;}
       if(ev.type==='impact')for(let i=0;i<5;i++)this.particle(ev.at,ev.color,.45,.25+Math.random()*.15,{x:(Math.random()-.5)*3,y:Math.random()*2,z:(Math.random()-.5)*3});
       if(ev.type==='kill'){
         const e=this.game.enemies.find(e=>e.id===ev.enemy);if(!e)continue;
@@ -130,12 +136,20 @@ export class World {
   }
   projectPoint(x,y,z){const v=new THREE.Vector3(x,y,z).project(this.camera);return {x:(v.x*.5+.5)*innerWidth,y:(-v.y*.5+.5)*innerHeight,visible:v.z<1&&v.z>0&&Math.abs(v.x)<1.1&&Math.abs(v.y)<1.1};}
   project(e){const v=new THREE.Vector3(e.x,e.y+SPECIES[e.type].size*.5+.5,e.z).project(this.camera);return {x:(v.x*.5+.5)*innerWidth,y:(-v.y*.5+.5)*innerHeight,visible:v.z<1&&v.z>0&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05};}
-  update(dt){const p=this.game.player,t=this.game.time;this.camera.position.set(p.x,p.y+(p.moving&&p.grounded?Math.sin(t*13)*.025:Math.sin(t*1.5)*.012),p.z);this.camera.rotation.set(p.pitch,p.yaw,0);this.camera.updateMatrixWorld();const s=SPELLS[this.castKick>0?(this.lastSpell??this.game.selected):this.game.selected];this.castKick=Math.max(0,this.castKick-dt*5);this.wand.rotation.x=-.23-this.castKick*.25;this.wand.position.y=-.42+(p.moving?Math.sin(t*6.5)*.015:0)-this.castKick*.03;this.crystal.material.color.set(s.color);this.crystal.material.emissive.set(s.color);this.crystal.rotation.y=t*.4;this.wandGlow.material.color.set(s.color);this.updateShield(dt);updateFeyWorld(this,dt);this.updateCompanion();
+  update(dt){const p=this.game.player,t=this.game.time;
+    const speed=Math.hypot(p.vx,p.vz),stride=p.stride||0;
+    this.walkBlend=((this.walkBlend||0)+(Math.min(1,speed/7.5)*(p.grounded?1:0)-(this.walkBlend||0))*(1-Math.exp(-22*dt)));
+    if(this.eyeHeight===undefined||!p.grounded||Math.abs(this.eyeHeight-p.y)>.7)this.eyeHeight=p.y;
+    else this.eyeHeight+=(p.y-this.eyeHeight)*(1-Math.exp(-24*dt));
+    const bob=Math.cos(stride*2)*.038*this.walkBlend,sway=Math.sin(stride)*.018*this.walkBlend;
+    this.camera.position.set(p.x+Math.cos(p.yaw)*sway,this.eyeHeight+bob,p.z-Math.sin(p.yaw)*sway);
+    this.camera.rotation.set(p.pitch,p.yaw,Math.sin(stride)*.0025*this.walkBlend);this.camera.updateMatrixWorld();const s=SPELLS[this.castKick>0?(this.lastSpell??this.game.selected):this.game.selected];this.castKick=Math.max(0,this.castKick-dt*5);this.wand.rotation.x=-.23-this.castKick*.25;this.wand.position.y=-.42+Math.cos(stride*2)*.027*this.walkBlend-this.castKick*.03;this.wand.position.x=.43+Math.sin(stride)*.025*this.walkBlend;this.crystal.material.color.set(s.color);this.crystal.material.emissive.set(s.color);this.crystal.rotation.y=t*.4;this.wandGlow.material.color.set(s.color);this.updateShield(dt);updateFeyWorld(this,dt);this.updateCompanion();
     const ids=new Set(this.game.enemies.map(e=>e.id));for(const [id,v] of this.enemies){if(!ids.has(id)){this.disposeGroup(v.group);this.enemies.delete(id);}}
     for(const e of this.game.enemies){
       let v=this.enemies.get(e.id);const near=Math.hypot(e.x-p.x,e.z-p.z)<130;
       // Visuals are created lazily; painted rigs stay visible briefly to play their death.
       if(!v){if(!near||e.hp<=0)continue;v=this.enemyVisual(e);this.enemies.set(e.id,v);}
+      if(v.model){v.group.visible=near;if(near){v.group.position.set(e.x,e.y,e.z);v.model.update(e,dt,Math.hypot(e.x-p.x,e.z-p.z));v.shadow.visible=v.model.root.visible;v.shadow.position.y=terrain(e.x,e.z)-e.y+.07;}continue;}
       if(v.rig){v.group.visible=near&&(e.hp>0||v.deadT<1.1);if(e.hp<=0&&!v.group.visible){v.deadT+=dt;continue;}if(!near)continue;v.group.position.set(e.x,e.y,e.z);this.updateRig(v,e,dt,p);v.shadow.position.y=terrain(e.x,e.z)-e.y+.07;continue;}
       v.group.visible=e.hp>0&&near;if(!v.group.visible)continue;
       const def=SPECIES[e.type];v.group.position.set(e.x,e.y,e.z);

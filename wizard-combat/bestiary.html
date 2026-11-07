@@ -27,10 +27,17 @@
     dodge:(s,t)=>{const k=t%1.4;s.dodge=k<.4?Math.sin(k/.4*Math.PI):0;},
     death:(s,t)=>{const k=t%2.4;s.dead=Math.min(1,k/1);},
   };
+  // Species-specific states; a rig lists the ones it draws in `def.extra`.
+  const EXTRA={
+    heal:(s,t)=>{const k=t%2.2;s.heal=k<1.1?Math.sin(k/1.1*Math.PI):0;},
+    thaw:(s,t)=>{const k=t%4;s.thaw=k<2?0:Math.min(1,(k-2)*2);},
+    quench:(s,t)=>{const k=t%4;s.quench=k<2?Math.min(1,k*3):Math.max(0,1-(k-2)*1.5);s.slow=s.quench>.5?1:0;},
+    grounded:(s,t)=>{const k=t%4;s.grounded=k<.4?k/.4:k<2.6?1:Math.max(0,1-(k-2.6)/.6);s.stun=k<2.4?1:0;},
+  };
   const views=[];
   for(const [type,def] of Object.entries(MONSTER_ART)){
     const row=document.createElement('div');row.className='row';row.innerHTML=`<h2>${def.name}</h2>`;
-    for(const [name,fn] of Object.entries(STATES)){const cell=document.createElement('div');cell.className='cell';cell.innerHTML=`<div class="stage"></div><small>${name}</small>`;row.append(cell);
+    for(const [name,fn] of [...Object.entries(STATES),...(def.extra||[]).map(n=>[n,EXTRA[n]])]){const cell=document.createElement('div');cell.className='cell';cell.innerHTML=`<div class="stage"></div><small>${name}</small>`;row.append(cell);
       const live=mountSvg(def,cell.querySelector('.stage'));views.push({live,fn,def,seed:Math.random()*10});}
     document.getElementById('rows').append(row);
   }

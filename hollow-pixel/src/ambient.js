@@ -11,6 +11,7 @@ function clearRoute(world,a,b){
 // triggers a journey once; crossing a distance threshold never changes position.
 export function updateAmbient(world,player,time,dt){
   for(const a of world.ambient){
+    if(Math.abs(a.x-player.x)>950||Math.abs(a.y-player.y)>950)continue;
     a.homeX??=a.x;a.homeY??=a.y;a.trip??=0;a.nextMove??=time+1+a.phase;
     const flying=a.sprite===52||a.sprite===53;
     if(a.goal){

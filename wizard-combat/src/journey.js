@@ -1,5 +1,6 @@
 import {SPELLS,ACTIONS,CAMPS,terrain} from './data.js';
 import {courtAt,WORLD_HALF} from './landscape.js';
+import {HABITATS} from './habitats.js';
 export const SLOTS=[['weapon','Wand','✦'],['focus','Focus','◇'],['head','Head','♔'],['robe','Robe','♜'],['boots','Feet','⌁'],['charm','Charm','◈']];
 export const ITEMS={
  twig:{lore:'A spark is enough to begin.',name:'Hearth twig',slot:'weapon',icon:'✦',stats:{},detail:'A spark is enough to begin.'},
@@ -45,9 +46,10 @@ export const QUESTS=[
  {id:'seasons',name:'Four winds',detail:'Explore all four seasonal courts, beyond the Hearth.',need:4,kind:'courts',xp:150,knowledge:1},
  {id:'sentinel',name:'An old debt',detail:'Defeat the old sentinel in the deep Bloomwood.',need:1,kind:'camp',target:6,requires:'brood',xp:180,knowledge:1},
  {id:'crowns',name:'Keepers of the wild',detail:'Clear the Drowned Crown, Last Pyre and White Silence.',need:3,kind:'crowns',requires:'sentinel',xp:320,knowledge:2},
+ {id:'living-world',name:'Read the living world',detail:'Find the six living habitats: the Giving Grove west of the Hearth, Hungry Shelter, Living Rafters, Thawline, Turning Orchard and Lanternwater Gardens. Observe their residents; no kills are required.',need:6,kind:'habitats',xp:180,knowledge:1},
 ];
 export class Journey{
-  constructor(){this.known=new Set(['attack']);this.knowledge=0;this.level=1;this.xp=0;this.inventory=['twig','wraps'];this.equipment={weapon:'twig',robe:'wraps'};this.cleared=new Set();this.discovered=new Set([0]);this.courts=new Set();this.killTypes={};this.claimed=new Set();this.gear={};this.revision=0;}
+  constructor(){this.known=new Set(['attack']);this.knowledge=0;this.level=1;this.xp=0;this.inventory=['twig','wraps'];this.equipment={weapon:'twig',robe:'wraps'};this.cleared=new Set();this.discovered=new Set([0]);this.habitats=new Set();this.courts=new Set();this.killTypes={};this.claimed=new Set();this.gear={};this.revision=0;}
   xpNeeded(){return 60+(this.level-1)*45;}
   power(){return 1+(this.level-1)*.09+(this.gear.power||0);}
   gainXp(amount){this.xp+=amount;while(this.xp>=this.xpNeeded()&&this.level<12){this.xp-=this.xpNeeded();this.level++;this.knowledge++;this.recalculate();this.player.mana=this.player.maxMana;this.emit('level');}if(this.level===12)this.xp=Math.min(this.xp,this.xpNeeded());this.revision++;}
@@ -57,7 +59,7 @@ export class Journey{
   recalculate(){const g=gearTotals(this.equipment);this.gear=g;if(this.player){this.player.maxHp=100+(this.level-1)*4+(g.hp||0);this.player.maxMana=100+(this.level-1)*3+(g.mana||0);this.player.hp=Math.min(this.player.hp,this.player.maxHp);this.player.mana=Math.min(this.player.mana,this.player.maxMana);}this.revision++;}
   equip(id){const it=ITEMS[id];if(!it||!this.inventory.includes(id))return false;this.equipment[it.slot]=id;this.recalculate();this.emit('equip');return true;}
   unequip(slot){if(!this.equipment[slot])return false;delete this.equipment[slot];this.recalculate();return true;}
-  questProgress(q){if(q.kind==='camp')return this.cleared.has(q.target)?1:0;if(q.kind==='type')return Math.min(q.need,this.killTypes[q.target]||0);if(q.kind==='courts')return this.courts.size;if(q.kind==='crowns')return [14,15,16].filter(i=>this.cleared.has(i)).length;return 0;}
+  questProgress(q){if(q.kind==='habitats')return this.habitats.size;if(q.kind==='camp')return this.cleared.has(q.target)?1:0;if(q.kind==='type')return Math.min(q.need,this.killTypes[q.target]||0);if(q.kind==='courts')return this.courts.size;if(q.kind==='crowns')return [14,15,16].filter(i=>this.cleared.has(i)).length;return 0;}
   questAvailable(q){return !q.requires||this.claimed.has(q.requires);}
   claimQuest(id){const q=QUESTS.find(q=>q.id===id);if(!q||!this.questAvailable(q)||this.claimed.has(id)||this.questProgress(q)<q.need)return false;this.claimed.add(id);this.knowledge+=q.knowledge||0;this.gainXp(q.xp);this.emit('quest',{name:q.name});return true;}
   recordKill(e){this.killTypes[e.type]=(this.killTypes[e.type]||0)+1;this.gainXp(Math.round(e.xpReward));
@@ -66,12 +68,14 @@ export class Journey{
     }
   }
   explore(){const p=this.player;if(Math.hypot(p.x,p.z)>50&&!this.courts.has(courtAt(p.x,p.z))){this.courts.add(courtAt(p.x,p.z));this.revision++;}
+    for(const h of HABITATS)if(Math.hypot(h.x-p.x,h.z-p.z)<h.r+5&&!this.habitats.has(h.id)){this.habitats.add(h.id);this.emit('habitat',{name:h.name,detail:h.detail});this.revision++;}
     CAMPS.forEach((c,i)=>{if(Math.hypot(c.x-p.x,c.z-p.z)<48&&!this.discovered.has(i)){this.discovered.add(i);this.emit('discover',{camp:i});this.revision++;}});
   }
-  save(){return {version:2,level:this.level,xp:this.xp,knowledge:this.knowledge,known:[...this.known],inventory:this.inventory,equipment:this.equipment,cleared:[...this.cleared],discovered:[...this.discovered],courts:[...this.courts],killTypes:this.killTypes,claimed:[...this.claimed],kills:this.kills,deaths:this.deaths,position:{x:this.player.x,z:this.player.z,yaw:this.player.yaw,pitch:this.player.pitch}};}
+  save(){return {version:2,level:this.level,xp:this.xp,knowledge:this.knowledge,known:[...this.known],inventory:this.inventory,equipment:this.equipment,cleared:[...this.cleared],discovered:[...this.discovered],habitats:[...this.habitats],courts:[...this.courts],killTypes:this.killTypes,claimed:[...this.claimed],kills:this.kills,deaths:this.deaths,position:{x:this.player.x,z:this.player.z,y:Math.max(this.player.y,terrain(this.player.x,this.player.z)+1.7),yaw:this.player.yaw,pitch:this.player.pitch}};}
   restore(data){if(!data||data.version!==2)return false;
     const num=(v,min,max,fallback)=>Number.isFinite(v)?Math.max(min,Math.min(max,v)):fallback;
     const list=(v)=>Array.isArray(v)?v:[];
+    this.habitats=new Set(list(data.habitats).filter(id=>HABITATS.some(h=>h.id===id)));
     this.level=Math.floor(num(data.level,1,12,1));this.xp=num(data.xp,0,this.xpNeeded(),0);this.knowledge=Math.floor(num(data.knowledge,0,20,0));
     this.known=new Set(['attack',...list(data.known).filter(a=>ACTIONS[a]!==undefined&&SPELLS[ACTIONS[a]].level<=this.level)]);
     this.inventory=[...new Set(['twig','wraps',...list(data.inventory).filter(id=>ITEMS[id])])];this.equipment={};
@@ -79,6 +83,6 @@ export class Journey{
     this.cleared=new Set(list(data.cleared).filter(i=>CAMPS[i]));this.discovered=new Set([0,...list(data.discovered).filter(i=>CAMPS[i])]);this.courts=new Set(list(data.courts).filter(i=>Number.isInteger(i)&&i>=0&&i<4));
     this.claimed=new Set(list(data.claimed).filter(id=>QUESTS.some(q=>q.id===id)));this.killTypes={};for(const [type,n] of Object.entries(data.killTypes||{}))this.killTypes[type]=Math.floor(num(n,0,100000,0));
     this.kills=Math.floor(num(data.kills,0,100000,0));this.deaths=Math.floor(num(data.deaths,0,100000,0));this.recalculate();
-    const p=this.player,loc=data.position||{};p.x=num(loc.x,-WORLD_HALF+15,WORLD_HALF-15,0);p.z=num(loc.z,-WORLD_HALF+15,WORLD_HALF-15,8);p.y=terrain(p.x,p.z)+1.7;p.yaw=num(loc.yaw,-100000,100000,0);p.pitch=num(loc.pitch,-1.4,1.4,0);p.hp=p.maxHp;p.mana=p.maxMana;this.revision++;return true;
+    const p=this.player,loc=data.position||{};p.x=num(loc.x,-WORLD_HALF+15,WORLD_HALF-15,0);p.z=num(loc.z,-WORLD_HALF+15,WORLD_HALF-15,8);p.y=num(loc.y,terrain(p.x,p.z)+1.7,500,terrain(p.x,p.z)+1.7);p.yaw=num(loc.yaw,-100000,100000,0);p.pitch=num(loc.pitch,-1.4,1.4,0);p.hp=p.maxHp;p.mana=p.maxMana;this.revision++;return true;
   }
 }

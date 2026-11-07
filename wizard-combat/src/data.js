@@ -1,5 +1,6 @@
 import {generateScenery,generateWilds} from './scenery.js';
 import {terrain} from './landscape.js';
+import {ECO_SPECIES} from './ecology-species.js';
 export {terrain} from './landscape.js';
 export const SPELLS = [
   {id:'fire',name:'Firebolt',icon:'✹',color:'#ffa066',cost:0,damage:16,rate:.24,range:72,speed:78,detail:'Straight fire bolts. Ignite targets and melt ice armor.'},
@@ -26,16 +27,17 @@ export const CONTROLS=[
   {action:'companion',key:'1'}, {action:'haste',key:'2'}, {action:'renew',key:'3'}, {action:'recall',key:'4'},
 ];
 export const SPECIES={
+  ...ECO_SPECIES,
   seedling:{name:'Briar Seedling',emoji:'🌱',hp:32,speed:2,damage:6,attack:2.4,reach:27,size:1.4,color:'#c5de88',xp:24,ranged:true,shotSpeed:19,burst:1},
-  swarm:{name:'Needle Brood',emoji:'🪲',hp:24,speed:5,damage:6,attack:2.2,reach:28,size:1.3,color:'#a8d8a1',xp:14,ranged:true,shotSpeed:25,burst:1},
+  swarm:{name:'Needle Piper',emoji:'🪲',hp:24,speed:5,damage:6,attack:2.2,reach:28,size:1.3,color:'#a8d8a1',xp:14,ranged:true,shotSpeed:25,burst:1},
   prowler:{name:'Thorn Prowler',emoji:'🐺',hp:40,speed:11.8,damage:18,attack:.95,reach:2.1,size:1.7,color:'#bcce7c',xp:28,dodge:{reaction:.26,speed:13,duration:.4,cooldown:2}},
-  titan:{name:'Stone Gunner',emoji:'🗿',hp:144,speed:3.4,damage:24,attack:2,reach:44,size:3.5,color:'#cdb69a',xp:55,ranged:true,shotSpeed:27,burst:2,cover:true},
-  wisp:{name:'Storm Wisp',emoji:'👻',hp:32,speed:6,damage:9,attack:1.4,reach:38,size:1.6,color:'#c9d9ff',flying:true,ranged:true,xp:28,shotSpeed:33,burst:3,cover:true,dodge:{reaction:.25,speed:8,duration:.4,cooldown:2}},
+  titan:{name:'Dolmen Stag',emoji:'🗿',hp:144,speed:3.4,damage:24,attack:2,reach:44,size:3.5,color:'#cdb69a',xp:55,ranged:true,shotSpeed:27,burst:2,cover:true},
+  wisp:{name:'Stormbell',emoji:'👻',hp:32,speed:6,damage:9,attack:1.4,reach:38,size:1.6,color:'#c9d9ff',flying:true,ranged:true,xp:28,shotSpeed:33,burst:3,cover:true,dodge:{reaction:.25,speed:8,duration:.4,cooldown:2}},
   spitter:{name:'Hex Spitter',emoji:'🕷️',hp:44,speed:4.3,damage:10,attack:1.5,reach:42,size:1.9,color:'#cdb5e9',ranged:true,xp:30,shotSpeed:31,burst:3,cover:true,dodge:{reaction:.4,speed:5,duration:.4,cooldown:3}},
-  colossus:{name:'Hollow Colossus',emoji:'🦑',hp:224,speed:1.3,damage:38,attack:2.4,reach:55,size:5,color:'#d7a093',ranged:true,xp:65,shotSpeed:23,burst:2},
-  healer:{name:'Bloomkeeper',emoji:'🍄',hp:56,speed:3.6,damage:10,attack:1.9,reach:38,size:2.3,color:'#e5b6c6',ranged:true,xp:40,shotSpeed:28,burst:2,cover:true},
-  ice:{name:'Rimeguard',emoji:'🧊',hp:56,speed:4,damage:12,attack:1.8,reach:42,size:2.4,color:'#9ee5ee',xp:35,ranged:true,shotSpeed:35,burst:2,cover:true},
-  ash:{name:'Cinder Hexer',emoji:'🔥',hp:40,speed:5.5,damage:10,attack:1.6,reach:40,size:1.9,color:'#ffa46f',xp:30,ranged:true,shotSpeed:32,burst:3,cover:true,dodge:{reaction:.3,speed:7,duration:.4,cooldown:2.5}},
+  colossus:{name:'Lilycrown Leviathan',emoji:'🦑',hp:224,speed:1.3,damage:38,attack:2.4,reach:55,size:5,color:'#d7a093',ranged:true,xp:65,shotSpeed:23,burst:2},
+  healer:{name:'Spore Abbess',emoji:'🍄',hp:56,speed:3.6,damage:10,attack:1.9,reach:38,size:2.3,color:'#e5b6c6',ranged:true,xp:40,shotSpeed:28,burst:2,cover:true},
+  ice:{name:'Hoarscale',emoji:'🧊',hp:56,speed:4,damage:12,attack:1.8,reach:42,size:2.4,color:'#9ee5ee',xp:35,ranged:true,shotSpeed:35,burst:2,cover:true},
+  ash:{name:'Lantern Wyrm',emoji:'🔥',hp:40,speed:5.5,damage:10,attack:1.6,reach:40,size:1.9,color:'#ffa46f',xp:30,ranged:true,shotSpeed:32,burst:3,cover:true,dodge:{reaction:.3,speed:7,duration:.4,cooldown:2.5}},
 };
 export const CAMPS=[
   {name:'First embers',x:-8,z:-44,level:1,types:['seedling','seedling','seedling'],reward:'reedwand'},

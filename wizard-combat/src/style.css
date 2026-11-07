@@ -213,3 +213,4 @@ dialog::backdrop{background:#0a141299;backdrop-filter:blur(5px)}
 
 @media(max-width:1000px){.vitals{width:190px}.spell-slot{width:44px;height:44px}#utility-dock .spell-slot{width:36px;height:36px}#target-frame{top:60px}#quest-tracker b{font-size:14px}}
 @media(max-width:760px){.action-bar{bottom:70px}#buffs{bottom:150px}.vitals{width:160px}}
+.habitat-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px}.habitat-list .camp-button{font-size:12px;color:#dce5c3;min-height:42px}

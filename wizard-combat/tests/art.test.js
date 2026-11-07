@@ -9,13 +9,17 @@ import {SPELL_ART} from '../src/art/spells.js';
 import {SPELLS} from '../src/data.js';
 import {paperdoll} from '../src/art/figure.js';
 
-const states={idle:{},move:{move:1,phase:2},windup:{windup:1},attack:{attack:1},hurt:{hurt:1},stun:{stun:1},root:{root:1},dodge:{dodge:-1},dead:{dead:1}};
+const states={idle:{},move:{move:1,phase:2},windup:{windup:1},attack:{attack:1},hurt:{hurt:1},stun:{stun:1},root:{root:1},dodge:{dodge:-1},dead:{dead:1},heal:{heal:1},thaw:{thaw:1},quench:{quench:1,slow:1},grounded:{grounded:1,stun:1}};
 test('every painted rig belongs to a species and has a valid part tree',()=>{
   for(const [type,def] of Object.entries(MONSTER_ART)){
     assert.ok(SPECIES[type],type);const ids=new Set();
     for(const p of def.parts){assert.ok(!ids.has(p.id),`${type}: duplicate ${p.id}`);ids.add(p.id);assert.equal(p.pivot.length,2);}
     for(const p of def.parts){let q=p,depth=0;while(q.parent){q=def.parts.find(x=>x.id===q.parent);assert.ok(q,`${type}: ${p.id} has a missing parent`);assert.ok(++depth<20,`${type}: parent cycle at ${p.id}`);}}
   }
+});
+test('every species has a painted rig and its extra states are known',()=>{
+  for(const type of Object.keys(SPECIES))assert.ok(MONSTER_ART[type],`${type} has no rig`);
+  for(const [type,def] of Object.entries(MONSTER_ART))for(const name of def.extra||[])assert.ok(states[name],`${type}: unknown extra state ${name}`);
 });
 test('rig animations produce finite poses in every combat state',()=>{
   for(const [type,def] of Object.entries(MONSTER_ART))for(const [name,extra] of Object.entries(states))for(const t of [0,.37,2.9,13.1]){

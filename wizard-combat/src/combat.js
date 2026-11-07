@@ -1,6 +1,9 @@
 import {Journey} from './journey.js';
+import {resetEcology,updateEcology,updateEcologicalCreature,interruptRoots,strikeEcology} from './ecology.js';
+import {acceptsHabitat} from './landscape.js';
+import {approachVelocity} from './locomotion.js';
 import {SPELLS,SPECIES,CAMPS,WILDS,ACTIONS,SHIELD,terrain} from './data.js';
-import {clamp,subtract,length,dot,normalize,pointAt,sphereHit,wallHit,blocked,inside,floorAt,clearBody,moveBody,navigate,shieldHit,nearbyCover} from './physics.js';
+import {clamp,subtract,length,dot,normalize,pointAt,sphereHit,enemyHit,wallHit,blocked,inside,floorAt,clearBody,moveBody,navigate,shieldHit,nearbyCover} from './physics.js';
 export {blocked,sphereHit} from './physics.js';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const EYE=1.7;
@@ -18,6 +21,7 @@ export class Combat extends Journey{
     this.enemies=[];this.projectiles=[];this.beam.time=0;
     CAMPS.forEach((c,i)=>this.spawnGroup(c,i));
     WILDS.forEach(c=>this.spawnGroup(c,-1));
+    resetEcology(this);
   }
   spawnGroup(c,camp){
     c.types.forEach((type,j)=>{
@@ -41,15 +45,28 @@ export class Combat extends Journey{
   trace(range=72,origin=this.player,direction=this.aim(),radius=0){
     const end={x:origin.x+direction.x*range,y:origin.y+direction.y*range,z:origin.z+direction.z*range};
     let fraction=wallHit(origin,end)??1,enemy=null;
-    for(const e of this.enemies){if(e.hp<=0)continue;const t=sphereHit(origin,end,e,SPECIES[e.type].size*.34+radius);if(t!==null&&t<fraction){fraction=t;enemy=e;}}
+    for(const e of this.enemies){if(e.hp<=0)continue;const t=enemyHit(origin,end,e,radius);if(t!==null&&t<fraction){fraction=t;enemy=e;}}
     return{enemy,end:pointAt(origin,end,fraction),distance:fraction*range};
   }
   target(range=72){return this.trace(range).enemy;}
   move(dx,dz,dt,sprint=false){
-    const p=this.player,l=Math.hypot(dx,dz)||1,speed=(sprint?10.4:7.5)*(p.slow>0?.7:1)*(1+(this.gear.move||0))*(this.buffs.haste>0?1.3:1),oldX=p.x,oldZ=p.z;dx/=l;dz/=l;
-    const level=moveBody(p,(dx*Math.cos(p.yaw)+dz*Math.sin(p.yaw))*speed*dt,(-dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))*speed*dt,.42,p.y-EYE,EYE,p.grounded?.28:0);
-    if(level>p.y-EYE)p.y=level+EYE;
-    p.vx=(p.x-oldX)/(dt||1);p.vz=(p.z-oldZ)/(dt||1);p.moving=Math.hypot(p.vx,p.vz)>.1;
+    const p=this.player,l=Math.max(1,Math.hypot(dx,dz)),speed=(sprint?10.4:7.5)*(p.slow>0?.7:1)*(1+(this.gear.move||0))*(this.buffs.haste>0?1.3:1);dx/=l;dz/=l;
+    const tx=(dx*Math.cos(p.yaw)+dz*Math.sin(p.yaw))*speed,tz=(-dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))*speed;
+    let remaining=Math.min(dt,.1);
+    while(remaining>1e-7){
+      const step=Math.min(remaining,1/120);remaining-=step;
+      const braking=!(dx||dz)||p.vx*tx+p.vz*tz<0;
+      const v=approachVelocity(p.vx,p.vz,tx,tz,p.grounded?(braking?110:68):24,step),ox=p.x,oz=p.z;
+      const mx=(p.vx+v.x)*.5*step,mz=(p.vz+v.z)*.5*step;
+      const level=moveBody(p,mx,mz,.42,p.y-EYE,EYE,p.grounded?.28:0);
+      if(level>p.y-EYE)p.y=level+EYE;
+      // Stay planted down walkable slopes; actual ledges still enter free fall.
+      const floor=floorAt(p.x,p.z,p.y-EYE+.05,.42),drop=p.y-EYE-floor;
+      if(p.grounded&&drop>=0&&drop<.32)p.y=floor+EYE;
+      p.vx=Math.abs(p.x-ox-mx)<1e-5?v.x:0;p.vz=Math.abs(p.z-oz-mz)<1e-5?v.z:0;
+      if(p.grounded)p.stride=(p.stride||0)+Math.hypot(p.x-ox,p.z-oz)*Math.PI*2/3.4;
+    }
+    p.moving=Math.hypot(p.vx,p.vz)>.1;
   }
   jump(){const p=this.player;if(!p.grounded)return false;p.vy=8.6;p.grounded=false;this.emit('jump');return true;}
   vertical(dt){
@@ -78,10 +95,11 @@ export class Combat extends Journey{
     if(action==='blink'){
       let {x:dx,z:dz}=move;if(!dx&&!dz)dz=-1;const l=Math.hypot(dx,dz),wx=(dx*Math.cos(p.yaw)+dz*Math.sin(p.yaw))/l,wz=(-dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))/l;
       for(let n=0;n<38;n++){const level=moveBody(p,wx*s.range/38,wz*s.range/38,.42,p.y-EYE,EYE,p.grounded?.28:0);p.y=Math.max(p.y,level+EYE);}
-      p.invuln=.25;p.slow=0;this.emit('blink');return true;
+      p.invuln=Math.max(p.invuln,.25);p.slow=0;this.emit('blink');return true;
     }
     if(action==='shockwave'){
       this.beam.time=0;
+      interruptRoots(this,p,s.range);
       for(const e of this.enemies){if(e.hp<=0||length(subtract(e,p))>s.range||blocked(p,e))continue;
         const d=distance(p,e)||1,push=['titan','colossus'].includes(e.type)?3:8,dx=(e.x-p.x)/d,dz=(e.z-p.z)/d;
         for(let n=0;n<32;n++)this.moveEnemy(e,dx*push/32,dz*push/32);
@@ -102,14 +120,16 @@ export class Combat extends Journey{
   }
   hurtEnemy(e,amount,color='#fff',tick=false){
     if(e.hp<=0)return 0;if(e.shell)amount*=.6;const actual=Math.min(e.hp,amount);e.hp-=amount;e.aggro=true;e.lastDamage=this.time;if(!tick){e.flash=.1;this.emit('hit',{enemy:e.id,amount:actual,color});}else{e.tickPool=(e.tickPool||0)+actual;e.tickColor=color;}
-    for(const ally of this.enemies)if(ally.hp>0&&distance(e,ally)<14)ally.aggro=true;
+    for(const ally of this.enemies)if(ally.hp>0&&!SPECIES[ally.type].neutral&&distance(e,ally)<14)ally.aggro=true;
     if(e.hp<=0){e.hp=0;e.dead=e.wild!==undefined?180:90;e.windup=0;e.burstLeft=0;this.kills++;this.emit('kill',{enemy:e.id});this.recordKill(e);}
 
     return actual;
   }
   hurtPlayer(amount){
     const p=this.player;if(p.invuln>0)return;p.hp-=amount*this.damageScale*(1-Math.min(.5,this.gear.armor||0));this.buffs.recall=0;p.lastHit=this.time;this.emit('hurt',{amount});
-    if(p.hp<=0){this.deaths++;p.hp=p.maxHp;p.mana=p.maxMana;p.invuln=2.5;this.beam.time=0;for(const b of this.projectiles)b.life=0;this.emit('death');}
+    if(p.hp<=0){this.deaths++;p.hp=p.maxHp;p.mana=p.maxMana;p.invuln=6;p.recovery=6;p.slow=0;this.beam.time=0;
+      for(const e of this.enemies){e.aggro=false;e.windup=0;e.huntWindup=0;e.burstLeft=0;e.lastDamage=-100;e.attackTimer=1;}
+      for(const h of this.ecology?.hazards||[]){h.state='recover';h.timer=9;h.phase=.25;}for(const b of this.projectiles)b.life=0;this.emit('death');}
   }
   updateBeam(dt){
     const b=this.beam,p=this.player,s=SPELLS[4];if(b.time<=0)return;
@@ -119,7 +139,7 @@ export class Combat extends Journey{
     else {const hit=this.trace(s.range);b.end=hit.end;e=hit.enemy;if(e){b.target=e.id;this.emit('latch',{enemy:e.id});}}
     if(e){b.end={x:e.x,y:e.y,z:e.z};const actual=this.hurtEnemy(e,s.damage*this.power()*dt,s.color,true);p.hp=Math.min(p.maxHp,p.hp+actual*(.65+(this.gear.siphon||0)));if(e.hp<=0)b.time=0;}
   }
-  moveEnemy(e,dx,dz){const s=SPECIES[e.type];moveBody(e,dx,dz,s.size*.23,terrain(e.x,e.z),Math.max(1.7,s.size),.3);}
+  moveEnemy(e,dx,dz){const s=SPECIES[e.type];if(e.type==='snowkeel'&&!acceptsHabitat(e.type,e.x+dx,e.z+dz))return;moveBody(e,dx,dz,s.size*.23,terrain(e.x,e.z),Math.max(1.7,s.size),.3);}
   shoot(e){
     const p=this.player,s=SPECIES[e.type],speed=s.shotSpeed,lead=Math.min(.25,distance(e,p)/speed*.22);
     const aim={x:p.x+p.vx*lead,y:p.y-.4+p.vy*lead*.35,z:p.z+p.vz*lead};
@@ -177,7 +197,7 @@ export class Combat extends Journey{
       else if(d<11)goal={x:e.x-dx*5,z:e.z-dz*5};
       else if(e.type!=='colossus')goal={x:e.x-dz*sign*3,z:e.z+dx*sign*3};
     }
-    if(goal&&e.root<=0&&e.windup<=0&&e.burstLeft<=0)navigate(e,goal,speed*dt,radius);
+    if(goal&&e.root<=0&&e.windup<=0&&e.burstLeft<=0)navigate(e,goal,speed*dt,radius,dt);
     if(e.burstLeft>0){
       e.burstTimer-=dt;
       if(e.burstTimer<=0){if(visible&&d<s.reach)this.shoot(e);e.burstLeft--;e.burstTimer=.22;
@@ -189,26 +209,31 @@ export class Combat extends Journey{
     if(allowed&&e.attackTimer<=0){e.windup=e.type==='colossus'?.8:.35;this.emit('windup',{enemy:e.id});}
   }
   updateEnemies(dt){
-    const p=this.player;let engaged=false;
+    const p=this.player;let engaged=false;p.recovery=Math.max(0,(p.recovery||0)-dt);
+    updateEcology(this,dt);
     for(const e of this.enemies){const s=SPECIES[e.type];
-      if(e.hp<=0){if(this.respawn){e.dead-=dt;if(e.dead<=0&&(e.wild===undefined||distance(e,p)>60))Object.assign(e,{x:e.homeX,z:e.homeZ,hp:e.maxHp,root:0,slow:0,freeze:0,ground:0,burn:0,quench:0,shell:e.type==='ice',aggro:false,attackTimer:.8,healTimer:3,dodgeTime:0,dodgeCooldown:0,threat:null,seenFor:0,aiState:'idle',coverPlan:null,coverTimer:0,burstLeft:0,windup:0,waypoint:null});}continue;}
+      e.walked=false;
+      if(e.hp<=0){if(this.respawn){e.dead-=dt;if(e.dead<=0&&((e.wild===undefined&&!e.eco)||distance(e,p)>60))Object.assign(e,{x:e.homeX,z:e.homeZ,hp:e.maxHp,root:0,slow:0,freeze:0,ground:0,burn:0,quench:0,shell:e.type==='ice',aggro:false,attackTimer:.8,healTimer:3,dodgeTime:0,dodgeCooldown:0,threat:null,seenFor:0,aiState:'idle',coverPlan:null,coverTimer:0,burstLeft:0,windup:0,waypoint:null,lastDamage:-100,huntWindup:0,alert:undefined,panic:0,meal:0,reserveCold:1,reserveWarm:.4,ecoClock:0});}continue;}
       for(const key of ['root','slow','freeze','ground','burn','quench','flash','dodgeCooldown'])e[key]=Math.max(0,e[key]-dt);
       if(e.burn>0)this.hurtEnemy(e,4*this.power()*dt,'#ff9a51',true);if(e.hp<=0)continue;
-      const d=distance(e,p);if(d>100){e.aggro=false;continue;}const visible=!blocked(e,p);if(d<32&&visible)e.aggro=true;if(d>95)e.aggro=false;if(e.aggro)engaged=true;
+      const d=distance(e,p);if(d>100){e.aggro=false;continue;}
+      if(updateEcologicalCreature(this,e,dt)){if(e.aggro)engaged=true;continue;}
+      if(p.recovery>0){e.aggro=false;e.windup=0;e.burstLeft=0;}
+      const visible=!blocked(e,p);if(d<32&&visible&&!(p.recovery>0))e.aggro=true;if(d>95)e.aggro=false;if(e.aggro)engaged=true;
       if(e.type==='healer'&&e.freeze<=0){e.healTimer-=dt;if(e.healTimer<=0){e.healTimer=3.2;for(const ally of this.enemies)if(ally.hp>0&&distance(e,ally)<16)ally.hp=Math.min(ally.maxHp,ally.hp+10*(this.beam.time>0&&this.beam.target===ally.id?.2:1));this.emit('heal',{enemy:e.id});}}
       if(e.wild!==undefined&&distance(e,{x:e.homeX,z:e.homeZ})>55&&d>18){e.aggro=false;e.coverPlan=null;e.windup=0;e.burstLeft=0;}
       if(!e.aggro&&e.wild!==undefined&&e.freeze<=0&&e.root<=0){
         const angle=this.time*.055+e.wild*2.4,goal={x:e.homeX+Math.cos(angle)*e.roam,z:e.homeZ+Math.sin(angle)*e.roam};
-        e.aiState='roam';navigate(e,goal,Math.min(1.6,s.speed*.4)*dt,s.size*.23);
+        e.aiState='roam';navigate(e,goal,Math.min(1.6,s.speed*.4)*dt,s.size*.23,dt);
       }
       if(this.dodge(e,dt)||!e.aggro||e.freeze>0)continue;
       if(s.ranged){this.updateRanged(e,dt,visible);continue;}
       e.aiState='rush';
       if(e.windup>0){e.windup-=dt;if(e.windup<=0){if(d<s.reach+.5&&Math.abs(e.y-(p.y-.7))<2.1&&visible)this.hurtPlayer(e.attackDamage);e.attackTimer=s.attack;}continue;}
-      e.attackTimer-=dt;if(e.root<=0&&d>s.reach*.8)navigate(e,p,s.speed*(e.slow>0?.65:1)*dt,s.size*.23);
+      e.attackTimer-=dt;if(e.root<=0&&d>s.reach*.8)navigate(e,p,s.speed*(e.slow>0?.65:1)*dt,s.size*.23,dt);
       if(d<s.reach&&Math.abs(e.y-(p.y-.7))<2.1&&visible&&e.attackTimer<=0)e.windup=.28;
     }
-    for(const e of this.enemies){const s=SPECIES[e.type],hover=s.flying&&e.ground<=0?2.6+(e.root>0?0:Math.sin(this.time*2+e.id)*.25):0;const y=terrain(e.x,e.z)+s.size*.5+hover;e.y+=(y-e.y)*(1-Math.exp(-16*dt));}
+    for(const e of this.enemies){if(!e.walked)e.navVX=e.navVZ=0;const s=SPECIES[e.type],hover=s.flying&&e.ground<=0?2.6+(e.root>0?0:Math.sin(this.time*2+e.id)*.25):0;const y=terrain(e.x,e.z)+s.size*.5+hover;e.y+=(y-e.y)*(1-Math.exp(-24*dt));}
     if(!engaged&&this.time-p.lastHit>5)p.hp=Math.min(p.maxHp,p.hp+10*dt);
   }
   explode(b){
@@ -226,7 +251,7 @@ export class Combat extends Journey{
       if(b.targetId!==null&&b.targetId!==undefined){const target=this.enemies.find(e=>e.id===b.targetId&&e.hp>0);if(!target||blocked(b,target))b.targetId=null;else{const desired=normalize(subtract(target,b)),speed=Math.hypot(b.vx,b.vy,b.vz),blend=1-Math.exp(-9*dt),v=normalize({x:b.vx/speed*(1-blend)+desired.x*blend,y:b.vy/speed*(1-blend)+desired.y*blend,z:b.vz/speed*(1-blend)+desired.z*blend});b.vx=v.x*speed;b.vy=v.y*speed;b.vz=v.z*speed;}}
       const old={x:b.x,y:b.y,z:b.z},speed=Math.hypot(b.vx,b.vy,b.vz),step=Math.min(dt,b.remaining/speed),end={x:b.x+b.vx*step,y:b.y+b.vy*step,z:b.z+b.vz*step};
       b.remaining-=speed*step;b.life-=dt;b.age+=dt;const wall=wallHit(old,end);let hit=null;
-      if(b.team==='player'){for(const e of this.enemies){if(e.hp<=0)continue;const t=sphereHit(old,end,e,SPECIES[e.type].size*.34+b.radius);if(t!==null&&(wall===null||t<wall)&&(!hit||t<hit.t))hit={t,e};}}
+      if(b.team==='player'){for(const e of this.enemies){if(e.hp<=0)continue;const t=enemyHit(old,end,e,b.radius);if(t!==null&&(wall===null||t<wall)&&(!hit||t<hit.t))hit={t,e};}}
       else{
         if(p.ward>0&&p.wardHits>0){const t=shieldHit(old,end,p,b.radius);if(t!==null&&(wall===null||t<wall))hit={t,shield:true};}
         for(const offset of [.35,.8,1.25]){const t=sphereHit(old,end,{x:p.x,y:p.y-offset,z:p.z},.45+b.radius);if(t!==null&&(wall===null||t<wall)&&(!hit||t<hit.t))hit={t,e:null};}
@@ -234,6 +259,7 @@ export class Combat extends Journey{
       if(hit||wall!==null){
         // Offset blast origins onto the incoming side of a surface, so cover reliably occludes splash.
         const fraction=hit?hit.t:wall;Object.assign(b,pointAt(old,end,fraction));
+        if(!hit&&b.team==='player')strikeEcology(this,b,b.spell);
         if(b.team==='player'&&SPELLS[b.spell].blast){const dir=normalize(subtract(end,old));b.x-=dir.x*.04;b.y-=dir.y*.04;b.z-=dir.z*.04;this.explode(b);}
         else if(hit?.shield){p.wardHits--;if(!p.wardHits)p.ward=0;this.emit('block',{at:{x:b.x,y:b.y,z:b.z},yaw:p.yaw,pitch:p.pitch,broken:!p.wardHits});}
         else{

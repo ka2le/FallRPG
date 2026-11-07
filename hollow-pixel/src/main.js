@@ -5,24 +5,28 @@ import { UI, shell } from './ui.js';
 import { Soundscape } from './audio.js';
 import { saveScreenshot } from './screenshot.js';
 import { SPECIES } from './data.js';
+import { WorldTouchControls } from './touch-controls.js';
 
 document.getElementById('app').innerHTML=shell();
 let saved=null,storageAvailable=true;
 try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch{storageAvailable=false;}
 const game=new Game(saved),canvas=document.getElementById('world'),renderer=new Renderer(canvas,game),sound=new Soundscape();
-let lastSave=0,capturing=false;
+let lastSave=0,capturing=false,restarting=false;
 async function printscreen(){
   if(capturing)return;capturing=true;
   try{await saveScreenshot();}catch(error){console.error(error);ui.toast('Screenshot could not be saved.');}
   finally{capturing=false;}
 }
 function save(manual=false){
+  if(restarting)return;
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(game.snapshot()));game.dirty=false;lastSave=performance.now();if(manual)ui.saved();}
   catch{storageAvailable=false;if(manual)ui.toast('Saving unavailable.');}
 }
 const ui=new UI(game,renderer,save),keys=new Set();
-const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','e','f','r','c',' ','1','2','3','h','enter','tab','j','k','m','escape'];
-function clearKeys(){keys.clear();}
+const touch=new WorldTouchControls(canvas,{enabled:()=>!ui.modal&&!game.paused,tap:worldTap,getZoom:()=>renderer.zoom,setZoom:zoom=>renderer.setZoom(zoom),startMove:()=>{game.destination=null;game.route=[];}});
+ui.onPause=()=>{keys.clear();touch.reset();};
+const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','e','f','r','c',' ','1','2','3','h','enter','tab','j','k','m','i','escape'];
+function clearKeys(){keys.clear();touch.reset();}
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(k==='p'){e.preventDefault();if(!e.repeat)void printscreen();return;}
@@ -39,9 +43,9 @@ window.addEventListener('keydown',e=>{
   if(handled.includes(k))e.preventDefault();keys.add(k);if(e.repeat)return;
   if(['q','e','f','r'].includes(k))game.beginCast(k);
   if(['1','2','3'].includes(k))game.setStance({1:'ember',2:'frost',3:'siphon'}[k]);
-  if(k==='c'||k==='enter')game.interact();if(k==='h')game.tonic();if(k==='tab'){const modes=['ember','frost','siphon'];game.setStance(modes[(modes.indexOf(game.stance)+1)%3]);}
+  if(k==='c'||k==='enter')game.interact();if(k==='h')game.tonic();if(k==='tab'){const modes=[...game.stances];game.setStance(modes[(modes.indexOf(game.stance)+1)%3]);}
   if(k===' ')game.autoAttack=!game.autoAttack;
-  if(k==='j'){clearKeys();ui.open('journal');}if(k==='k'){clearKeys();ui.open('grimoire');}if(k==='m'){clearKeys();ui.open('map');}if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
+  if(k==='i'){clearKeys();ui.open('equipment');}if(k==='j'){clearKeys();ui.open('journal');}if(k==='k'){clearKeys();ui.open('grimoire');}if(k==='m'){clearKeys();ui.open('map');}if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur',()=>{clearKeys();if(!ui.modal)ui.open('pause');save();});
@@ -49,18 +53,24 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearKeys(
 window.addEventListener('beforeunload',()=>save());
 canvas.addEventListener('pointermove',e=>{const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);renderer.hover=hit?.id||null;game.pointer=point;canvas.style.cursor=game.aiming?'crosshair':hit?'pointer':'default';});
 canvas.addEventListener('pointerleave',()=>renderer.hover=null);
-canvas.addEventListener('pointerdown',e=>{
-  if(ui.modal||e.isPrimary===false)return;e.preventDefault();canvas.focus();sound.ctx?.resume();const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);
+function worldTap(clientX,clientY){
+  if(ui.modal||game.paused)return;
+  const point=renderer.world(clientX,clientY),hit=renderer.hitCreature(point);
   game.pointer=point;
-  if(e.button===0){
-    if(game.aiming)game.confirmCast(point);
-    else if(hit){game.chooseTarget(hit.id);if(SPECIES[hit.type].neutral&&Math.hypot(hit.x-game.player.x,hit.y-game.player.y)<115)game.observe(hit);}
-    else {
-      const near=game.nearby;
-      if(near&&Math.abs(point.x-near.x)<22&&point.y>near.y-60&&point.y<near.y+18){game.target=null;game.destination=null;game.route=[];game.interact();}
-      else game.navigateTo(point.x,point.y);
+  if(game.aiming)game.confirmCast(point);
+  else if(hit){game.chooseTarget(hit.id);if(SPECIES[hit.type].neutral&&Math.hypot(hit.x-game.player.x,hit.y-game.player.y)<115)game.observe(hit);}
+  else {
+    const near=renderer.hitInteractable(point);
+    if(near){
+      if(Math.hypot(near.x-game.player.x,near.y-game.player.y)>=(near.kind==='npc'?65:48)){ui.toast('Move closer to interact.');return;}
+      game.target=null;game.destination=null;game.route=[];game.nearby=near;game.interact();
     }
   }
+}
+canvas.addEventListener('pointerdown',e=>{
+  if(ui.modal)return;canvas.focus();sound.ctx?.resume();
+  if(e.pointerType==='touch')return;
+  e.preventDefault();if(e.button===0)worldTap(e.clientX,e.clientY);
   if(e.button===2){e.preventDefault();game.cancelCast();}
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -72,8 +82,8 @@ try{
   let last=performance.now();
   function frame(now){const dt=Math.min((now-last)/1000,.05);last=now;
     if(capturing){requestAnimationFrame(frame);return;}
-    game.update(dt,{left:keys.has('a')||keys.has('arrowleft'),right:keys.has('d')||keys.has('arrowright'),up:keys.has('w')||keys.has('arrowup'),down:keys.has('s')||keys.has('arrowdown'),run:keys.has('shift')});
-    for(const e of game.events.splice(0)){ui.handleEvent(e);sound.event(e);}renderer.draw(dt);ui.tick(dt);if(!game.paused)sound.update(dt);
+    game.update(dt,{left:keys.has('a')||keys.has('arrowleft'),right:keys.has('d')||keys.has('arrowright'),up:keys.has('w')||keys.has('arrowup'),down:keys.has('s')||keys.has('arrowdown'),x:touch.movement.x,y:touch.movement.y,run:keys.has('shift')});
+    for(const e of game.events.splice(0)){if(e.type==='new-journey'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(new Game().snapshot()));restarting=true;location.reload();return;}catch{ui.toast('Could not replace the local save.');}}ui.handleEvent(e);sound.event(e);}renderer.draw(dt);ui.tick(dt);if(!game.paused)sound.update(dt);
     if(now-lastSave>12000&&!game.paused)save();requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
