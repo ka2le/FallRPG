@@ -23,7 +23,8 @@ const server = createServer(async (request, response) => {
     response.writeHead(404); response.end('Not found');
   }
 });
-await new Promise(resolve => server.listen(5174, '127.0.0.1', resolve));
+const port = Number(process.env.SITE_CHECK_PORT || 5174);
+await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
 let browser;
 try {
   browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl'] });
@@ -38,11 +39,29 @@ try {
   page.on('requestfailed', request => console.error('Request failed:',request.url(),request.failure()));
   page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
   page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()}: ${response.url()}`); });
-  const base = 'http://127.0.0.1:5174/FallRPG/';
+  const base = `http://127.0.0.1:${port}/FallRPG/`;
+  async function checkFullscreen() {
+    const enter = page.getByRole('button', { name: 'Enter fullscreen', exact: true });
+    await enter.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.fullscreenElement === document.documentElement, null, { polling: 100 });
+    const exit = page.getByRole('button', { name: 'Exit fullscreen', exact: true });
+    assert.equal(await exit.getAttribute('aria-pressed'), 'true');
+    await exit.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !document.fullscreenElement, null, { polling: 100 });
+    assert.equal(await enter.getAttribute('aria-pressed'), 'false');
+  }
   const screenshots = new URL('../hollow-pixel/artifacts/', import.meta.url);
   await mkdir(screenshots, { recursive: true });
   await page.goto(base);
   assert.equal(await page.locator('.games a').count(), 2);
+  await checkFullscreen();
+  // Browser-driven exits also have to restore the button's state.
+  await page.getByRole('button', { name: 'Enter fullscreen' }).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.evaluate(() => document.exitFullscreen());
+  await page.getByRole('button', { name: 'Enter fullscreen' }).waitFor();
   await page.screenshot({ path: fileURLToPath(new URL('game-picker.png', screenshots)) });
   await page.setViewportSize({ width: 390, height: 844 });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -52,8 +71,11 @@ try {
   await page.locator('#entry .game-picker-link').waitFor();
   await page.waitForFunction(() => !!document.querySelector('#world').dataset.engine && typeof window.hollowSnapshot === 'function', null, { polling: 100 });
   console.log('3D initialized');
+  await page.keyboard.press('t');
+  await checkFullscreen();
+  await page.locator('#lab [data-close]').evaluate(button => button.click());
   // Activate the ordinary anchor without frame-based actionability checks.
-  await page.locator('#entry .game-picker-link').evaluate(link => link.click());
+  await page.locator('#pause .game-picker-link').evaluate(link => link.click());
   await page.waitForURL(base);
   assert.equal(page.url(), base);
   console.log('3D return passed');
@@ -62,6 +84,14 @@ try {
   console.log('Pixel initialized');
   await page.screenshot({ path: fileURLToPath(new URL('game-picker-pixel.png', screenshots)) });
   await page.keyboard.press('Escape');
+  await checkFullscreen();
+  // Reopening the dynamically rendered pause menu while fullscreen keeps its label.
+  await page.getByRole('button', { name: 'Enter fullscreen' }).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause menu', exact: true }).click();
+  await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
+  await page.waitForFunction(() => !document.fullscreenElement);
   const back = page.getByRole('link', { name: 'Choose another game' });
   await back.focus();
   await page.keyboard.press('Enter');
@@ -69,7 +99,7 @@ try {
   await page.goto(`${base}bestiary.html?preview=1#seedling`);
   await page.waitForURL(`${base}wizard-combat/bestiary.html?preview=1#seedling`);
   assert.deepEqual(errors, [], `Browser errors: ${errors.join('\n')}`);
-  console.log('PASS: picker, narrow layout, both production games, keyboard return, assets and legacy bestiary redirect under /FallRPG/.');
+  console.log('PASS: fullscreen entry/exit on all three screens, picker, narrow layout, both production games, keyboard return, assets and legacy bestiary redirect under /FallRPG/.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

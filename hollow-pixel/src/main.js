@@ -27,7 +27,7 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(k==='p'){e.preventDefault();if(!e.repeat)void printscreen();return;}
   if(ui.modal){
-    if(k==='enter'&&document.activeElement?.tagName==='A')return;
+    if(k==='enter'&&document.activeElement?.matches('a[href], [data-fullscreen]'))return;
     if(k==='c'||k==='enter'){e.preventDefault();ui.advanceDialogue();return;}
     if(k==='escape'){e.preventDefault();ui.close();clearKeys();return;}
     // Trap keyboard focus inside the open dialog.

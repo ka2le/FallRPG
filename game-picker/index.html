@@ -14,9 +14,11 @@
     .scene{height:150px;width:100%;margin-bottom:24px;border-radius:4px;background:#14271f}.label{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#c6b57d}h2{font:normal 29px Georgia,serif;margin:12px 0}.description{font-size:14px;line-height:1.7;color:#becbb8;margin:0 0 28px}.play{margin-top:auto;color:#ead394;font-size:14px}.play span{float:right}footer{text-align:center;font-size:12px;line-height:1.8;color:#9eae9d;margin-top:30px}
     @media(max-width:600px){main{padding:36px 20px}.games{grid-template-columns:1fr}.scene{height:110px}.game{padding:24px}header{margin-bottom:26px}}
     @media(prefers-reduced-motion:reduce){.game{transition:none}.game:hover{transform:none}}
+    .fullscreen-button{position:absolute;top:16px;right:16px;padding:8px 12px;border:1px solid #66765a;border-radius:4px;color:#e9e5ce;background:#1b3028;font:12px system-ui,sans-serif;cursor:pointer}.fullscreen-button:focus-visible{outline:2px solid #e6c97e;outline-offset:3px}.fullscreen-button:disabled{opacity:.5;cursor:default}#fullscreen-error{display:block;text-align:center;padding:8px}
   </style>
 </head>
 <body>
+  <button class="fullscreen-button" type="button" data-fullscreen aria-label="Enter fullscreen" aria-pressed="false">⛶ Fullscreen</button>
   <main>
     <header><div class="eyebrow">FallRPG</div><h1>The Hollow</h1><p>One world of strange creatures and endless seasons.<br>Choose your way in.</p></header>
     <nav class="games" aria-label="Choose a game">
@@ -31,5 +33,6 @@
     </nav>
     <footer>Made for a keyboard and mouse. Progress saves in this browser.<br>Each game keeps its own adventure.</footer>
   </main>
+  <script type="module">import { initFullscreen } from './fullscreen.js'; initFullscreen();</script>
 </body>
 </html>

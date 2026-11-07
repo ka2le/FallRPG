@@ -7,6 +7,7 @@ const output = new URL('dist/', root);
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(new URL('game-picker/index.html', root), new URL('index.html', output));
+await cp(new URL('game-picker/fullscreen.js', root), new URL('fullscreen.js', output));
 for (const game of ['wizard-combat', 'hollow-pixel']) {
   await cp(new URL(`${game}/dist/`, root), new URL(`${game}/`, output), { recursive: true });
 }

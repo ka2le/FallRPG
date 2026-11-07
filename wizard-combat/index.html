@@ -49,6 +49,7 @@
   <dialog id="lab">
     <header class="dialog-head"><h2>Settings</h2><button class="close icon-button" data-close="lab" aria-label="Close settings">×</button></header>
     <div class="lab-layout"><div><h3>Encounters</h3><div id="camp-list"></div></div><aside class="lab-settings">
+      <button type="button" data-fullscreen aria-label="Enter fullscreen" aria-pressed="false">⛶ Fullscreen</button>
       <label>Graphics<select id="quality"><option value="balanced">Balanced</option><option value="low">Low</option><option value="high">High</option></select></label><label class="check-label"><input id="perf" type="checkbox"> Frame stats</label>
       <label class="check-label"><input id="testing-mode" type="checkbox"> Testing mode</label><small id="testing-controls" hidden>G · fly / land<br>Shift · fast · Space ↑ · Ctrl ↓</small>
       <label>Damage <output id="damage-value">100%</output><input id="damage-scale" type="range" min="50" max="200" step="10" value="100"></label>
@@ -60,5 +61,5 @@
       <div class="session-stats"><span title="Defeated">⚔ <b id="stat-kills">0</b></span><span title="Deaths">☠ <b id="stat-deaths">0</b></span><span title="Level">✧ <b id="stat-level">1</b></span></div>
     </aside></div>
   </dialog>
-  <div id="performance" hidden></div><script type="module" src="/src/main.js"></script>
+  <div id="performance" hidden></div><script type="module" src="/src/main.js"></script><script type="module" src="./src/fullscreen.js"></script>
 </body></html>
