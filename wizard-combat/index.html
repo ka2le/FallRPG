@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#192724"><meta name="description" content="The Hollow — first-person wizard combat."><title>The Hollow</title></head>
 <body>
+  <style>.game-picker-link{display:block;margin:18px auto 0;color:#d7c594;font:14px system-ui,sans-serif;text-align:center;text-underline-offset:4px}.game-picker-link:focus-visible{outline:2px solid #d7c594;outline-offset:5px}</style>
   <canvas id="world" aria-label="Combat grounds"></canvas>
   <div id="vignette"></div><div id="damage-flash"></div>
   <main id="hud">
@@ -22,8 +23,8 @@
       <div class="action-bar"><div id="spell-dock" aria-label="Abilities"></div><div id="utility-dock" aria-label="Utility spells"></div></div>
     </footer>
   </main>
-  <div id="entry" class="veil"><section class="entry-card"><div class="sigil">✧</div><h1>The Hollow</h1><button id="enter" class="play-button" aria-label="Play" title="Play">▶</button></section></div>
-  <div id="pause" class="veil hidden"><section class="pause-card"><h2>Paused</h2><button id="resume" class="primary">▶ <span>Resume</span></button><button id="windowed" class="hidden">Windowed play</button><small id="pointer-help" hidden>Mouse capture unavailable. Arrow keys to look; J / K / L mirror attack / bind / shield.</small><div class="pause-menu"><button id="pause-bag" title="Inventory" aria-label="Inventory" data-icon="bag"></button><button id="pause-book" title="Spellbook" aria-label="Spellbook" data-icon="book"></button><button id="pause-lab" title="Settings" aria-label="Settings" data-icon="settings"></button></div></section></div>
+  <div id="entry" class="veil"><section class="entry-card"><div class="sigil">✧</div><h1>The Hollow</h1><button id="enter" class="play-button" aria-label="Play" title="Play">▶</button><a class="game-picker-link" href="../">Choose another game</a></section></div>
+  <div id="pause" class="veil hidden"><section class="pause-card"><h2>Paused</h2><button id="resume" class="primary">▶ <span>Resume</span></button><button id="windowed" class="hidden">Windowed play</button><small id="pointer-help" hidden>Mouse capture unavailable. Arrow keys to look; J / K / L mirror attack / bind / shield.</small><div class="pause-menu"><button id="pause-bag" title="Inventory" aria-label="Inventory" data-icon="bag"></button><button id="pause-book" title="Spellbook" aria-label="Spellbook" data-icon="book"></button><button id="pause-lab" title="Settings" aria-label="Settings" data-icon="settings"></button></div><a class="game-picker-link" href="../">Choose another game</a></section></div>
   <dialog id="book" class="codex">
     <nav class="codex-tabs">
       <button data-page="spells" class="active" data-tip="Spellbook · Tab" aria-label="Spellbook" data-icon="book"></button>

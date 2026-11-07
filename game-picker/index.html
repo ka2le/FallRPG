@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14251f">
+  <meta name="description" content="Two ways into The Hollow. Choose the first-person 3D adventure or the top-down pixel-art RPG.">
+  <title>The Hollow · Choose your game</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;color:#e9e5ce;background:#14251f}
+    *{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 0,#314735,transparent 65%)}
+    main{width:min(900px,100%);padding:64px 24px}header{text-align:center;margin-bottom:38px}.eyebrow{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#c6b57d}h1{font:normal clamp(42px,7vw,68px) Georgia,serif;margin:16px 0}header p{color:#b8c6b6;line-height:1.6}
+    .games{display:grid;grid-template-columns:1fr 1fr;gap:22px}.game{display:flex;flex-direction:column;padding:28px;border:1px solid #66765a;border-radius:8px;background:#1b3028;color:inherit;text-decoration:none;transition:background .18s,transform .18s}.game:hover{background:#253d30;transform:translateY(-3px)}.game:focus-visible{outline:3px solid #e6c97e;outline-offset:5px}
+    .scene{height:150px;width:100%;margin-bottom:24px;border-radius:4px;background:#14271f}.label{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#c6b57d}h2{font:normal 29px Georgia,serif;margin:12px 0}.description{font-size:14px;line-height:1.7;color:#becbb8;margin:0 0 28px}.play{margin-top:auto;color:#ead394;font-size:14px}.play span{float:right}footer{text-align:center;font-size:12px;line-height:1.8;color:#9eae9d;margin-top:30px}
+    @media(max-width:600px){main{padding:36px 20px}.games{grid-template-columns:1fr}.scene{height:110px}.game{padding:24px}header{margin-bottom:26px}}
+    @media(prefers-reduced-motion:reduce){.game{transition:none}.game:hover{transform:none}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><div class="eyebrow">FallRPG</div><h1>The Hollow</h1><p>One world of strange creatures and endless seasons.<br>Choose your way in.</p></header>
+    <nav class="games" aria-label="Choose a game">
+      <a class="game" href="./wizard-combat/">
+        <svg class="scene" viewBox="0 0 340 150" aria-hidden="true"><circle cx="244" cy="37" r="18" fill="#c7bc86"/><path d="M0 108 57 55 103 100 164 36 236 108 291 60 340 105V150H0Z" fill="#3c5948"/><path d="M0 135 94 91 154 127 248 92 340 133V150H0Z" fill="#6a7954"/><path d="m144 150 20-38h14l23 38" fill="#b5a777"/><g fill="#203c2b"><path d="m38 59-24 64h48Z"/><path d="m85 78-19 49h38Z"/><path d="m292 54-27 74h54Z"/></g><path d="m211 125 13-30 13 30Z" fill="#b48a59"/><circle cx="225" cy="87" r="5" fill="#edcf80"/></svg>
+        <span class="label">First-person · 3D</span><h2>Feywild Journey</h2><p class="description">Wield spells, explore the seasonal courts, and meet the wild face to face.</p><span class="play">Play the 3D game <span aria-hidden="true">↗</span></span>
+      </a>
+      <a class="game" href="./hollow-pixel/">
+        <svg class="scene" viewBox="0 0 340 150" shape-rendering="crispEdges" aria-hidden="true"><path fill="#39573b" d="M0 0h340v150H0z"/><path fill="#8c895b" d="M0 96h144V0h32v96h164v24H176v30h-32v-30H0z"/><path fill="#25442e" d="M16 20h48v48H16zm64 0h32v32H80zm168-8h48v48h-48zm-36 92h48v36h-48zm80-28h32v32h-32z"/><path fill="#6c8350" d="M24 12h32v40H24zm56 0h32v24H80zm176-8h32v40h-32zm-36 92h32v28h-32z"/><path fill="#baaa7c" d="M204 44h48v36h-48z"/><path fill="#915e48" d="M196 44V32h12V20h40v12h12v12z"/><path fill="#273d30" d="M220 60h12v20h-12z"/><path fill="#d4b66b" d="M152 76h12v12h-12z"/><path fill="#8ea4a0" d="M148 88h20v20h-20z"/><path fill="#bdc98d" d="M52 120h8v8h-8zm224-32h8v8h-8z"/></svg>
+        <span class="label">Top-down · Pixel art</span><h2>Between Seasons</h2><p class="description">Wander living habitats, meet the villagers, and shape your own spellbook.</p><span class="play">Play the pixel game <span aria-hidden="true">↗</span></span>
+      </a>
+    </nav>
+    <footer>Made for a keyboard and mouse. Progress saves in this browser.<br>Each game keeps its own adventure.</footer>
+  </main>
+</body>
+</html>

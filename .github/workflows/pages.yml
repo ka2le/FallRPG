@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'wizard-combat/**'
+      - 'hollow-pixel/**'
+      - 'game-picker/**'
+      - 'scripts/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -29,7 +32,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: wizard-combat/package-lock.json
+          cache-dependency-path: |
+            wizard-combat/package-lock.json
+            hollow-pixel/package-lock.json
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Install dependencies
@@ -38,10 +43,28 @@ jobs:
         run: npm test
       - name: Build playable game
         run: npm run build
+      - name: Install pixel game dependencies
+        run: npm ci
+        working-directory: hollow-pixel
+      - name: Test pixel gameplay
+        run: npm test
+        working-directory: hollow-pixel
+      - name: Build pixel game
+        run: npm run build
+        working-directory: hollow-pixel
+      - name: Assemble game picker and both games
+        run: node scripts/build-site.mjs
+        working-directory: .
+      - name: Install browser for publishing checks
+        run: npx playwright install --with-deps chromium --only-shell
+        working-directory: hollow-pixel
+      - name: Check picker and game URLs under the Pages subpath
+        run: node scripts/check-site.mjs
+        working-directory: .
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: wizard-combat/dist
+          path: dist
 
   deploy:
     needs: build
