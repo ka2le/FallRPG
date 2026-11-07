@@ -3,8 +3,9 @@ import { EXPANSION_PATHS, EXPANSION_PLACES, CAMP_SITES, REGION_SITES, WATER_PATC
 import { TREE_FAMILIES, SEASONAL_TREES, DECORATION_POOLS, WILDS_ASSETS } from './environment-catalog.js';
 import { MORE_SPECIES, CREATURE_VARIANTS } from './expansion-monsters.js';
 import { ADVENTURE_PATHS, ENCOUNTERS } from './adventure.js';
-import { WORLD_SIZE, WORLD_BOUNDS, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, frontierAt, frontierHabitatAt, inFrontier } from './frontier.js';
+import { WORLD_SIZE, WORLD_BOUNDS, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, frontierHabitatAt, inFrontier } from './frontier.js';
 import { populateFrontier } from './frontier-world.js';
+import { frontierLandscapeAt, landscapePoolAt } from './frontier-landscape.js';
 import { plantRootwalls } from './rootwall-layout.js';
 
 export const WIDTH=WORLD_SIZE.width, HEIGHT=WORLD_SIZE.height;
@@ -22,7 +23,7 @@ export const seasonY=x=>1030+Math.sin(x*.004)*80;
 export const riverX=y=>620+Math.sin(y*.006)*88+Math.sin(y*.013)*25;
 const inside=(x,y,cx,cy,rx,ry)=>((x-cx)/rx)**2+((y-cy)/ry)**2<1;
 export function biomeAt(x,y){
-  if(inFrontier(x,y))return frontierAt(x,y).biome;
+  if(inFrontier(x,y))return frontierLandscapeAt(x,y).biome;
   if(x>6000)return 'ember';
   let biome=y<seasonY(x)?(x<seamX(y)?'spring':'autumn'):(x<seamX(y)?'winter':'ember');
   if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)return biome;
@@ -60,14 +61,22 @@ export const BRIDGES=[850,1420,2830,3150,3700].map((y,i)=>({x:riverX(y),y,width:
 export function bridgeAt(x,y){return BRIDGES.some(b=>Math.abs(x-b.x)<b.width/2&&Math.abs(y-b.y)<b.depth/2);}
 export function waterAt(x,y){
   if(bridgeAt(x,y))return false;
-  if(inFrontier(x,y)){const s=frontierHabitatAt(x,y);return !!s?.water&&Math.hypot((x-s.x)/.85,y-s.y)<s.radius*(.56+noise(x,y,45)*.18)&&pathDistance(x,y)>34;}
+  if(inFrontier(x,y)){
+    const s=frontierHabitatAt(x,y);
+    if(s)return !!s.water&&Math.hypot((x-s.x)/.85,y-s.y)<s.radius*(.56+noise(x,y,45)*.18)&&pathDistance(x,y)>34;
+    const land=frontierLandscapeAt(x,y);return !!land.water&&landscapePoolAt(x,y,land)&&pathDistance(x,y)>34;
+  }
   return (Math.abs(x-riverX(y))<23+noise(x,y,110)*9||Math.hypot((x-370)*.9,(y-340)*1.2)<102||Math.hypot((x-1710)*1.1,(y-700)*.8)<76||WATER_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)))&&distanceToPaths(x,y,FRONTIER_PATHS)>34;
 }
 export function lavaAt(x,y){
-  if(inFrontier(x,y)){const s=frontierHabitatAt(x,y);return !!s?.lava&&Math.hypot(x-s.x,(y-s.y)*1.3)<s.radius*(.52+noise(x,y,40)*.2)&&pathDistance(x,y)>34;}
+  if(inFrontier(x,y)){
+    const s=frontierHabitatAt(x,y);
+    if(s)return !!s.lava&&Math.hypot(x-s.x,(y-s.y)*1.3)<s.radius*(.52+noise(x,y,40)*.2)&&pathDistance(x,y)>34;
+    const land=frontierLandscapeAt(x,y);return !!land.lava&&landscapePoolAt(x,y,land)&&pathDistance(x,y)>34;
+  }
   return biomeAt(x,y)==='ember'&&((Math.hypot((x-2060)*.8,(y-1510)*1.1)<110+noise(x,y,60)*30)||(x>2130&&x<LEGACY_WIDTH&&y>1080&&y<1130+Math.sin(x*.018)*26)||LAVA_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)))&&distanceToPaths(x,y,FRONTIER_PATHS)>34;
 }
-export function regionAt(x,y){if(inFrontier(x,y))return frontierHabitatAt(x,y)||frontierAt(x,y);return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
+export function regionAt(x,y){if(inFrontier(x,y))return frontierHabitatAt(x,y)||frontierLandscapeAt(x,y);return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
 export function terrainAt(x,y){const biome=biomeAt(x,y),path=pathDistance(x,y),site=regionAt(x,y);return {biome,path,water:waterAt(x,y),lava:lavaAt(x,y),bridge:bridgeAt(x,y),wet:noise(x+490,y-93,130),height:noise(x,y,250),microhabitat:site?.kind||null,region:site?.id||null};}
 
 export function createWorld(){

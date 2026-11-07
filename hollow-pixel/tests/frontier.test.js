@@ -5,6 +5,7 @@ import { WIDTH, HEIGHT, HOME, MIN_X, MIN_Y, MAX_X, MAX_Y, canWalk, biomeAt, inVi
 import { SPECIES } from '../src/data.js';
 import { GEAR } from '../src/adventure.js';
 import { WORLD_SIZE, CORE_SIZE, FRONTIER_DISTRICTS, FRONTIER_CAMPS, FRONTIER_PATHS, FRONTIER_PLACES, FRONTIER_HUNTS, FRONTIER_HABITATS, inFrontier } from '../src/frontier.js';
+import { FRONTIER_LANDSCAPES, frontierLandscapeAt } from '../src/frontier-landscape.js';
 
 const game=new Game(),world=game.world;
 test('the playable landscape is ten times the pre-update world, with at least the same scenery density',()=>{
@@ -23,6 +24,36 @@ test('the hearth is central and all four directions have dense, varied wildernes
     for(const d of districts){assert.ok(propsNear(world,d.x,d.y,500).filter(p=>!p.removed).length>100);assert.ok(d.x>MIN_X&&d.x<MAX_X&&d.y>MIN_Y&&d.y<MAX_Y);}
   }
   assert.ok(new Set(world.creatures.filter(c=>c.frontier&&SPECIES[c.type].neutral).map(c=>c.type)).size>=14);
+});
+test('travelling through remote wilderness crosses smaller seasons and landscape types',()=>{
+  let windows=0,varied=0;
+  // Sample whole areas, including the spaces far from authored destinations.
+  for(let y=MIN_Y+650;y<MAX_Y-650;y+=1300)for(let x=MIN_X+650;x<MAX_X-650;x+=1300){
+    const seasons=new Set(),styles=new Set();let samples=0;
+    for(let dy=-500;dy<=500;dy+=125)for(let dx=-500;dx<=500;dx+=125){
+      if(!inFrontier(x+dx,y+dy))continue;samples++;
+      seasons.add(biomeAt(x+dx,y+dy));styles.add(frontierLandscapeAt(x+dx,y+dy).kind);
+    }
+    if(samples<60)continue;windows++;if(seasons.size>=2&&styles.size>=3)varied++;
+  }
+  assert.ok(windows>100);assert.ok(varied/windows>.95,`${varied}/${windows} remote areas have local variety`);
+});
+test('glades visibly open the canopy and hundreds of interstitial communities have real terrain and residents',()=>{
+  const trees={dense:0,open:0},samples={dense:0,open:0};let ponds=0,vents=0;
+  for(const site of FRONTIER_LANDSCAPES){
+    if(!inFrontier(site.x,site.y)||site.x<MIN_X+180||site.x>MAX_X-180||site.y<MIN_Y+180||site.y>MAX_Y-180)continue;
+    const land=frontierLandscapeAt(site.x,site.y);if(land.authored||land.id!==site.id)continue;
+    const group=land.cover>.8?'dense':land.cover<.25?'open':null;
+    if(group){trees[group]+=propsNear(world,site.x,site.y,150).filter(p=>p.tree&&!p.removed).length;samples[group]++;}
+    if(waterAt(site.x,site.y)){ponds++;assert.equal(canWalk(world,site.x,site.y),false);}
+    if(lavaAt(site.x,site.y)){vents++;assert.equal(canWalk(world,site.x,site.y),false);}
+  }
+  assert.ok(samples.dense>50&&samples.open>50);
+  assert.ok(trees.dense/samples.dense>3*trees.open/samples.open,'clearings differ in silhouette, beyond palette changes');
+  assert.ok(ponds>50&&vents>10);
+  assert.ok(new Set(world.props.filter(p=>p.landscape&&!p.removed).map(p=>p.landscape)).size>350);
+  const residents=world.creatures.filter(c=>c.landscape);assert.ok(new Set(residents.map(c=>c.landscape)).size>350);
+  for(const c of residents){assert.ok(canWalk(world,c.x,c.y,8));assert.equal(biomeAt(c.x,c.y),SPECIES[c.type].habitat);}
 });
 test('every outer district has inhabited resource pockets, with water and lava matching collision',()=>{
   for(const site of FRONTIER_HABITATS){

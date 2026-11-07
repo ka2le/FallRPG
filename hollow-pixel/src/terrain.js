@@ -1,6 +1,7 @@
 import { BIOMES, PLACES } from './data.js';
 import { MIN_X, MIN_Y, MAX_X, MAX_Y, HOME, random, hash, noise, biomeAt, terrainAt, pathDistance, riverX, waterAt, BRIDGES } from './world.js';
 import { inFrontier } from './frontier.js';
+import { landscapeGroundColor } from './frontier-landscape.js';
 const Y_SCALE=.72;
 const makeCanvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
 const mix=(a,b,t)=>{const ca=a.match(/\w\w/g).map(v=>parseInt(v,16)),cb=b.match(/\w\w/g).map(v=>parseInt(v,16));return '#'+ca.map((c,i)=>Math.round(c+(cb[i]-c)*t).toString(16).padStart(2,'0')).join('');};
@@ -40,6 +41,7 @@ export class TerrainCache{
     const canvas=makeCanvas(size,size),c=canvas.getContext('2d'),r=random((7391^Math.imul(tx,73471)^Math.imul(ty,19391))>>>0);c.translate(-x0,-ty*size);
     for(let y=Math.floor(y0/6)*6;y<y1;y+=6)for(let x=Math.floor(x0/6)*6;x<x1;x+=6){
       const t=terrainAt(x,y),weights=biomeBlend(x,y),n=noise(x,y,95)*.7+noise(x+333,y,32)*.3;let col=blendedColor(weights,groundPalettes,n);
+      if(inFrontier(x,y))col=landscapeGroundColor(col,t.microhabitat);
       if(t.microhabitat==='burrow-ridges')col=mix(col,'#a19478',.2);
       if(t.microhabitat==='burial-mounds')col=mix(col,'#6c684b',.15);
       if(t.microhabitat==='fog-garden')col=mix(col,'#658573',.18);

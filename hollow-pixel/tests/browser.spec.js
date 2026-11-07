@@ -275,6 +275,23 @@ test('outer seasonal resource gardens render around the centered world',async({p
   expect(errors).toEqual([]);
 });
 
+test('remote woods, meadows, marshes and ridges render between the named districts',async({page})=>{
+  test.setTimeout(60000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  for(const kind of ['deep-grove','flower-meadow','reed-marsh','basalt-rise']){
+    const state=await page.evaluate(async kind=>{
+      const {FRONTIER_LANDSCAPES,frontierLandscapeAt}=await import('/src/frontier-landscape.js'),{FRONTIER_DISTRICTS}=await import('/src/frontier.js');
+      const {game:g,renderer:r}=window.__hollow;
+      const site=FRONTIER_LANDSCAPES.find(s=>s.kind===kind&&!frontierLandscapeAt(s.x,s.y).authored&&FRONTIER_DISTRICTS.every(d=>Math.hypot(s.x-d.x,s.y-d.y)>1100)&&g.creatures.some(c=>c.landscape===s.id));
+      if(!site)return null;
+      const resident=g.creatures.find(c=>c.landscape===site.id);Object.assign(g.player,{x:resident.x,y:resident.y,invulnerable:100});g.autoAttack=false;g.paused=false;r.camera.x=g.player.x;r.camera.y=g.player.y*.72;
+      return {id:site.id,kind:frontierLandscapeAt(site.x,site.y).kind};
+    },kind);
+    expect(state?.kind).toBe(kind);await page.waitForTimeout(250);await page.screenshot({path:`artifacts/remote-${kind}.png`});
+    const cache=await page.evaluate(()=>window.__hollow.renderer.ground.tiles.size);expect(cache).toBeLessThanOrEqual(48);
+  }
+  expect(errors).toEqual([]);
+});
+
 test('rapid Claspwood attacks telegraph clearly and can be escaped after the first hit',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const start=await page.evaluate(()=>{

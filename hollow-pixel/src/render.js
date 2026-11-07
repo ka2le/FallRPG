@@ -2,6 +2,7 @@ import { TerrainCache } from './terrain.js';
 import { cellBounds, characterFrame, environmentFrame, creatureAppearance } from './sprites.js';
 import { BIOMES, SPECIES, PLACES, SPELL_BY_ID } from './data.js';
 import { ENCOUNTERS } from './adventure.js';
+import { landscapeGroundColor } from './frontier-landscape.js';
 import { WIDTH, HEIGHT, MIN_X, MIN_Y, MAX_X, MAX_Y, HOME, hash, biomeAt, terrainAt, seamX, waterAt, dist, clamp, PATHS, propsNear } from './world.js';
 
 export const Y_SCALE=.72;
@@ -42,7 +43,7 @@ export class Renderer{
   world(clientX,clientY){const r=this.canvas.getBoundingClientRect();return{x:(clientX-r.left)*this.width/r.width+this.left,y:((clientY-r.top)*this.height/r.height+this.top)/Y_SCALE};}
   bakeMap(){
     const w=600,h=Math.round(w*HEIGHT/WIDTH),map=makeCanvas(w,h),c=map.getContext('2d');
-    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const t=terrainAt(MIN_X+x/w*WIDTH,MIN_Y+y/h*HEIGHT);c.fillStyle=t.water?'#477c7a':t.lava?'#cb8759':({spring:'#5b7954',autumn:'#987349',winter:'#bacdcc',ember:'#68605a'})[t.biome];c.fillRect(x,y,2,2);}
+    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const t=terrainAt(MIN_X+x/w*WIDTH,MIN_Y+y/h*HEIGHT);c.fillStyle=t.water?'#477c7a':t.lava?'#cb8759':landscapeGroundColor(({spring:'#5b7954',autumn:'#987349',winter:'#bacdcc',ember:'#68605a'})[t.biome],t.microhabitat);c.fillRect(x,y,2,2);}
     for(const p of this.game.world.props)if(p.tree&&!p.removed){c.fillStyle='#253d31';c.globalAlpha=.18;c.fillRect((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h,1,1);}c.globalAlpha=1;
     c.strokeStyle='#d1bc87';c.lineWidth=.8;for(const path of PATHS){c.beginPath();path.forEach((p,i)=>i?c.lineTo((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h):c.moveTo((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h));c.stroke();}
     return map;
