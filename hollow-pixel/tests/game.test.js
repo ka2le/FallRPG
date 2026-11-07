@@ -30,11 +30,12 @@ test('malformed saves cannot inject invalid positions, spells or quest states',(
 test('a paused game freezes cooldowns and combat',()=>{const g=battle();g.setBinding('q','bind');g.cast('q');const time=g.time,cd=g.cooldowns.bind;g.paused=true;advance(g,3);assert.equal(g.time,time);assert.equal(g.cooldowns.bind,cd);assert.equal(g.cast('f'),false);});
 test('keyboard movement is normalized and updates facing',()=>{const g=battle(),x=g.player.x;g.update(.05,{right:true,up:true});assert.ok(Math.abs(Math.hypot(g.player.x-x,g.player.y-855)-4)<.01);assert.equal(g.player.direction,'up');});
 
-test('analog joystick movement scales speed, caps diagonals and yields to keyboard input',()=>{
+test('joystick runs by default, scales speed, caps diagonals and preserves keyboard walking',()=>{
   const g=battle();g.creatures=[];const x=g.player.x,y=g.player.y;
-  g.update(.05,{x:.5,y:0});assert.ok(Math.abs(g.player.x-x-2)<.01);
-  const a={...g.player};g.update(.05,{x:1,y:1});assert.ok(Math.abs(Math.hypot(g.player.x-a.x,g.player.y-a.y)-4)<.01);
+  g.update(.05,{x:.5,y:0});assert.ok(Math.abs(g.player.x-x-2.8)<.01);
+  const a={...g.player};g.update(.05,{x:1,y:1});assert.ok(Math.abs(Math.hypot(g.player.x-a.x,g.player.y-a.y)-5.6)<.01);
   const b={...g.player};g.update(.05,{left:true,x:1,y:1});assert.ok(Math.abs(g.player.x-b.x+4)<.01);assert.equal(g.player.y,b.y);
+  const running={...g.player};g.update(.05,{left:true,run:true});assert.ok(Math.abs(g.player.x-running.x+5.6)<.01);
   g.update(.05);assert.equal(g.player.moving,false);assert.ok(g.player.y>y);
 });
 

@@ -157,7 +157,7 @@ export class Game {
     p.mana=Math.min(p.maxMana,p.mana+dt*((this.isInCombat?3.5:7)+(this.gear.regen||0)));this.boltCooldown=Math.max(0,this.boltCooldown-dt);
     for(const id in this.cooldowns)this.cooldowns[id]=Math.max(0,this.cooldowns[id]-dt);
     let dx=(input.right?1:0)-(input.left?1:0),dy=(input.down?1:0)-(input.up?1:0),running=input.run;
-    if(!dx&&!dy){dx=Number.isFinite(input.x)?input.x:0;dy=Number.isFinite(input.y)?input.y:0;}
+    if(!dx&&!dy){dx=Number.isFinite(input.x)?input.x:0;dy=Number.isFinite(input.y)?input.y:0;running||=!!(dx||dy);}
     if(dx||dy){this.destination=null;this.route=[];}else if(this.route.length){const next=this.route[0],d=dist(p,next);if(d<5)this.route.shift();else {dx=(next.x-p.x)/d;dy=(next.y-p.y)/d;}if(!this.route.length)this.destination=null;}
     const length=Math.hypot(dx,dy);p.moving=length>0;
     if(length){const scale=Math.max(1,length);dx/=scale;dy/=scale;p.dx=dx;p.dy=dy;p.direction=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');if(Math.abs(dx)>.1)p.face=dx>0?1:-1;moveBody(this.world,p,dx*dt*(running?112:80)*(1+(this.gear.speed||0)),dy*dt*(running?112:80)*(1+(this.gear.speed||0)));p.walk+=dt*(running?10:7)*Math.min(1,length);}

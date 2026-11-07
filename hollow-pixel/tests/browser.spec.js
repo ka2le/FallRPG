@@ -93,6 +93,10 @@ test('mobile bottom joystick, fresh pinch zoom, target switching, spells and con
     // The lower-third joystick responds to the very first drag, without a hold.
     a={id:2,x:50,y:650};await send('touchStart',[a]);a.x+=65;await send('touchMove',[a]);
     await mobile.waitForFunction(x=>window.__hollow.game.player.x>x+8,original.x);
+    const runStart=await mobile.evaluate(()=>({x:window.__hollow.game.player.x,time:window.__hollow.game.time}));
+    await mobile.waitForFunction(time=>window.__hollow.game.time>time+.1,runStart.time);
+    const runEnd=await mobile.evaluate(()=>({x:window.__hollow.game.player.x,time:window.__hollow.game.time,speed:112*(1+(window.__hollow.game.gear.speed||0))}));
+    expect((runEnd.x-runStart.x)/(runEnd.time-runStart.time)).toBeCloseTo(runEnd.speed,3);
     expect(await mobile.evaluate(()=>window.__hollow.game.autoAttack)).toBe(true);
     stage='extra fingers';
     // Extra fingers cannot turn movement into zoom or stop the joystick.
