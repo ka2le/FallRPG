@@ -4,7 +4,7 @@ import { updateAmbient } from './ambient.js';
 import { enemyPressure, TREE_ATTACK } from './combat-tuning.js';
 import { attachRootwalls,updateRootwalls,saveRootwalls,restoreRootwalls } from './rootwalls.js';
 import { GEAR, LESSONS, STANCE_LESSONS, HUNTS, ENCOUNTERS, creatureStats } from './adventure.js';
-import { createWorld, HOME, WIDTH, HEIGHT, biomeAt, seamX, dist, clamp, canWalk, moveBody, lineClear, inVillage, propsNear } from './world.js';
+import { createWorld, HOME, MIN_X, MIN_Y, MAX_X, MAX_Y, biomeAt, seamX, dist, clamp, canWalk, moveBody, lineClear, inVillage, propsNear } from './world.js';
 
 export const SAVE_KEY='hollow-between-seasons-v1';
 export class Game {
@@ -142,7 +142,7 @@ export class Game {
       if(Math.abs(cur.x-goal.x)<=1&&Math.abs(cur.y-goal.y)<=1){found=cur;break;}
       for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]){
         const n={x:cur.x+dx,y:cur.y+dy},nk=key(n),g=cur.g+Math.hypot(dx,dy);
-        if(closed.has(nk)||n.x<1||n.y<2||n.x>WIDTH/cell-1||n.y>HEIGHT/cell-1||!canWalk(this.world,n.x*cell,n.y*cell,9))continue;
+        if(closed.has(nk)||n.x<(MIN_X+30)/cell||n.y<(MIN_Y+40)/cell||n.x>(MAX_X-30)/cell||n.y>(MAX_Y-30)/cell||!canWalk(this.world,n.x*cell,n.y*cell,9))continue;
         if(dx&&dy&&(!canWalk(this.world,(cur.x+dx)*cell,cur.y*cell,9)||!canWalk(this.world,cur.x*cell,(cur.y+dy)*cell,9)))continue;
         if(g<(cost.get(nk)??Infinity)){cost.set(nk,g);from.set(nk,cur);open.push({...n,g,f:g+Math.hypot(n.x-goal.x,n.y-goal.y)});}
       }
@@ -240,7 +240,7 @@ export class Game {
     c.state=c.type==='mantleback'?'turning leaf litter':c.type==='snowkeel'?'feeding beneath snow':c.type==='antler'?'tending antler gardens':cycle<6?'resting':'wandering';
     if(cycle>6){const goal={x:c.homeX+Math.sin(this.time*.06+c.phase)*65,y:c.homeY+Math.cos(this.time*.047+c.phase)*45};if(s.neutral&&c.type!=='scavenger'&&biomeAt(goal.x,goal.y)!==s.habitat)return;this.walkCreature(c,goal,dt,s.speed*.43);}
   }
-  snapshot(){const p=this.player;return {version:1,combatVersion:2,rpgVersion:1,rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
+  snapshot(){const p=this.player;return {version:1,worldLayout:2,combatVersion:2,rpgVersion:1,rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
   restore(s){
     if(s?.version!==1)return;const p=this.player,d=s.player||{};
     for(const key of ['level','xp','tonics','herbs','coins'])if(Number.isFinite(d[key]))p[key]=clamp(Math.floor(d[key]),key==='level'?1:0,key==='level'?50:9999);
@@ -268,8 +268,10 @@ export class Game {
     this.crossingOpen=s.crossingOpen===true;if(this.crossingOpen)this.world.props.find(p=>p.blockage).removed=true;
     this.defeated=new Set((Array.isArray(s.defeated)?s.defeated:[]).filter(id=>this.creatures.some(c=>c.id===id)));for(const c of this.creatures)if(this.defeated.has(c.id)){c.dead=true;c.hp=0;c.deadAt=-100;}
     for(const camp of this.cleared)for(const c of this.creatures)if(c.camp===camp){c.dead=true;c.hp=0;c.deadAt=-100;this.defeated.add(c.id);}
-    restoreRootwalls(this,s.rootwalls);
-    if(Number.isFinite(d.x)&&Number.isFinite(d.y)&&canWalk(this.world,d.x,d.y)){p.x=d.x;p.y=d.y;}
+    // Relocated frontier formations restart locally; old expeditions return home
+    // with equipment, discoveries and completed bounties intact.
+    restoreRootwalls(this,s.worldLayout===2?s.rootwalls:Array.isArray(s.rootwalls)?s.rootwalls.filter(g=>g?.id==='briar-march'||g?.id==='scaffold-march'):[]);
+    if((s.worldLayout===2||(d.x>=0&&d.y>=0&&d.x<7200&&d.y<4800))&&Number.isFinite(d.x)&&Number.isFinite(d.y)&&canWalk(this.world,d.x,d.y)){p.x=d.x;p.y=d.y;}
     for(const i of this.world.interactables)if(Array.isArray(s.harvested)&&s.harvested.includes(i.id))i.collected=true;
   }
 }

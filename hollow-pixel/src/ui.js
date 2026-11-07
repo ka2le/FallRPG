@@ -1,5 +1,5 @@
 import { BIOMES, SPELLS, SPELL_BY_ID, SLOTS, SPECIES, QUESTS, PLACES, STANCES } from './data.js';
-import { biomeAt, dist, WIDTH, HEIGHT } from './world.js';
+import { biomeAt, dist, WIDTH, HEIGHT, MIN_X, MIN_Y } from './world.js';
 import { fullscreenButton } from '../../game-picker/fullscreen.js';
 import { GEAR, LESSONS, STANCE_LESSONS, HUNTS, dangerAt } from './adventure.js';
 
@@ -43,8 +43,8 @@ export class UI{
     const el=e.target.closest('button');if(!el)return;
     if(el.dataset.menu){this.open(el.dataset.menu);return;}
     if(el.dataset.mapZoom){
-      const r=this.renderer,v=r.mapView||{zoom:1,x:WIDTH/2,y:HEIGHT/2},action=el.dataset.mapZoom;
-      if(action==='overview')r.mapView={zoom:1,x:WIDTH/2,y:HEIGHT/2};
+      const r=this.renderer,v=r.mapView||{zoom:1,x:MIN_X+WIDTH/2,y:MIN_Y+HEIGHT/2},action=el.dataset.mapZoom;
+      if(action==='overview')r.mapView={zoom:1,x:MIN_X+WIDTH/2,y:MIN_Y+HEIGHT/2};
       else if(action==='player')r.mapView={zoom:8,x:this.game.player.x,y:this.game.player.y};
       else r.mapView={zoom:Math.max(1,Math.min(16,v.zoom*(action==='in'?2:.5))),x:v.zoom===1?this.game.player.x:v.x,y:v.zoom===1?this.game.player.y:v.y};
       r.drawMinimap(document.getElementById('atlas-canvas'),true);return;

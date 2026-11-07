@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorld, WIDTH, HEIGHT, HOME, biomeAt, canWalk, lineClear, inVillage, BRIDGES, waterAt, terrainAt, propsNear } from '../src/world.js';
+import { createWorld, WIDTH, HEIGHT, MIN_X, MIN_Y, HOME, biomeAt, canWalk, lineClear, inVillage, BRIDGES, waterAt, terrainAt, propsNear } from '../src/world.js';
 import { EXPANSION_PATHS, EXPANSION_PLACES, REGION_SITES, CAMP_SITES } from '../src/regions.js';
 import { MORE_SPECIES } from '../src/expansion-monsters.js';
 import { SPECIES } from '../src/data.js';
@@ -22,16 +22,16 @@ test('every new road segment remains clear for walking, including bridge approac
   }
   for(const bridge of BRIDGES){assert.equal(waterAt(bridge.x,bridge.y),false);assert.ok(canWalk(world,bridge.x,bridge.y,8));}
 });
-test('all eighteen new landmarks are reachable on foot from Willowmere',()=>{
-  const size=20,cols=WIDTH/size,rows=HEIGHT/size,seen=new Uint8Array(cols*rows),walk=new Int8Array(cols*rows).fill(-1),qx=[Math.round(HOME.x/size)],qy=[Math.round(HOME.y/size)];
-  const open=(x,y)=>{if(x<1||y<2||x>=cols-1||y>=rows-1)return false;const k=y*cols+x;return walk[k]===-1?(walk[k]=canWalk(world,x*size,y*size,8)?1:0):walk[k];};
+test('all core and surrounding frontier landmarks are reachable on foot from Willowmere',()=>{
+  const size=20,cols=WIDTH/size,rows=HEIGHT/size,seen=new Uint8Array(cols*rows),walk=new Int8Array(cols*rows).fill(-1),qx=[Math.round((HOME.x-MIN_X)/size)],qy=[Math.round((HOME.y-MIN_Y)/size)];
+  const open=(x,y)=>{if(x<1||y<2||x>=cols-1||y>=rows-1)return false;const k=y*cols+x;return walk[k]===-1?(walk[k]=canWalk(world,MIN_X+x*size,MIN_Y+y*size,8)?1:0):walk[k];};
   seen[qy[0]*cols+qx[0]]=1;
   for(let i=0;i<qx.length;i++){
     const x=qx[i],y=qy[i];for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx=x+dx,ny=y+dy,k=ny*cols+nx;if(!seen[k]&&open(nx,ny)&&canWalk(world,(x+nx)*size/2,(y+ny)*size/2,8)){seen[k]=1;qx.push(nx);qy.push(ny);}
+      const nx=x+dx,ny=y+dy,k=ny*cols+nx;if(!seen[k]&&open(nx,ny)&&canWalk(world,MIN_X+(x+nx)*size/2,MIN_Y+(y+ny)*size/2,8)){seen[k]=1;qx.push(nx);qy.push(ny);}
     }
   }
-  for(const p of [...EXPANSION_PLACES,...FRONTIER_PLACES])assert.ok(seen[Math.round(p.y/size)*cols+Math.round(p.x/size)],p.id);
+  for(const p of [...EXPANSION_PLACES,...FRONTIER_PLACES])assert.ok(seen[Math.round((p.y-MIN_Y)/size)*cols+Math.round((p.x-MIN_X)/size)],p.id);
 });
 test('landmarks and animals belong to their stated habitats and spawn on usable ground',()=>{
   for(const place of EXPANSION_PLACES){assert.equal(biomeAt(place.x,place.y),place.biome,place.id);assert.ok(canWalk(world,place.x,place.y),place.id);}

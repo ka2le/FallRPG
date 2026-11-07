@@ -3,11 +3,12 @@ import { EXPANSION_PATHS, EXPANSION_PLACES, CAMP_SITES, REGION_SITES, WATER_PATC
 import { TREE_FAMILIES, SEASONAL_TREES, DECORATION_POOLS, WILDS_ASSETS } from './environment-catalog.js';
 import { MORE_SPECIES, CREATURE_VARIANTS } from './expansion-monsters.js';
 import { ADVENTURE_PATHS, ENCOUNTERS } from './adventure.js';
-import { WORLD_SIZE, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, frontierAt, inFrontier } from './frontier.js';
+import { WORLD_SIZE, WORLD_BOUNDS, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, frontierAt, frontierHabitatAt, inFrontier } from './frontier.js';
 import { populateFrontier } from './frontier-world.js';
 import { plantRootwalls } from './rootwall-layout.js';
 
 export const WIDTH=WORLD_SIZE.width, HEIGHT=WORLD_SIZE.height;
+export const {minX:MIN_X,minY:MIN_Y,maxX:MAX_X,maxY:MAX_Y}=WORLD_BOUNDS;
 const LEGACY_WIDTH=2400,LEGACY_HEIGHT=1800;
 export const HOME={x:1080,y:855};
 export const inVillage=point=>Math.hypot((point.x-HOME.x)/1.15,point.y-HOME.y)<210||CAMP_SITES.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius)||FRONTIER_CAMPS.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius);
@@ -57,9 +58,16 @@ export function pathDistance(x,y){return distanceToPaths(x,y,PATHS);}
 const legacyPathDistance=(x,y)=>distanceToPaths(x,y,LEGACY_PATHS);
 export const BRIDGES=[850,1420,2830,3150,3700].map((y,i)=>({x:riverX(y),y,width:i<2?120:128,depth:i===0?50:48}));
 export function bridgeAt(x,y){return BRIDGES.some(b=>Math.abs(x-b.x)<b.width/2&&Math.abs(y-b.y)<b.depth/2);}
-export function waterAt(x,y){if(bridgeAt(x,y))return false;return Math.abs(x-riverX(y))<23+noise(x,y,110)*9||Math.hypot((x-370)*.9,(y-340)*1.2)<102||Math.hypot((x-1710)*1.1,(y-700)*.8)<76||WATER_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry));}
-export function lavaAt(x,y){return biomeAt(x,y)==='ember'&&((Math.hypot((x-2060)*.8,(y-1510)*1.1)<110+noise(x,y,60)*30)||(x>2130&&x<LEGACY_WIDTH&&y>1080&&y<1130+Math.sin(x*.018)*26)||LAVA_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)));}
-export function regionAt(x,y){if(inFrontier(x,y))return frontierAt(x,y);return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
+export function waterAt(x,y){
+  if(bridgeAt(x,y))return false;
+  if(inFrontier(x,y)){const s=frontierHabitatAt(x,y);return !!s?.water&&Math.hypot((x-s.x)/.85,y-s.y)<s.radius*(.56+noise(x,y,45)*.18)&&pathDistance(x,y)>34;}
+  return (Math.abs(x-riverX(y))<23+noise(x,y,110)*9||Math.hypot((x-370)*.9,(y-340)*1.2)<102||Math.hypot((x-1710)*1.1,(y-700)*.8)<76||WATER_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)))&&distanceToPaths(x,y,FRONTIER_PATHS)>34;
+}
+export function lavaAt(x,y){
+  if(inFrontier(x,y)){const s=frontierHabitatAt(x,y);return !!s?.lava&&Math.hypot(x-s.x,(y-s.y)*1.3)<s.radius*(.52+noise(x,y,40)*.2)&&pathDistance(x,y)>34;}
+  return biomeAt(x,y)==='ember'&&((Math.hypot((x-2060)*.8,(y-1510)*1.1)<110+noise(x,y,60)*30)||(x>2130&&x<LEGACY_WIDTH&&y>1080&&y<1130+Math.sin(x*.018)*26)||LAVA_PATCHES.some(p=>inside(x,y,p.x,p.y,p.rx,p.ry)))&&distanceToPaths(x,y,FRONTIER_PATHS)>34;
+}
+export function regionAt(x,y){if(inFrontier(x,y))return frontierHabitatAt(x,y)||frontierAt(x,y);return REGION_SITES.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
 export function terrainAt(x,y){const biome=biomeAt(x,y),path=pathDistance(x,y),site=regionAt(x,y);return {biome,path,water:waterAt(x,y),lava:lavaAt(x,y),bridge:bridgeAt(x,y),wet:noise(x+490,y-93,130),height:noise(x,y,250),microhabitat:site?.kind||null,region:site?.id||null};}
 
 export function createWorld(){
@@ -158,7 +166,7 @@ export function createWorld(){
   for(let n=0;n<50;n++){const x=120+rand()*2160,y=160+rand()*1480;if(waterAt(x,y)||lavaAt(x,y))continue;const b=biomeAt(x,y),sprite=b==='winter'?(rand()<.5?50:55):b==='ember'?54:b==='spring'?[48,49,51,52,53][n%5]:[48,51,54][n%3];ambient.push({x,y,sprite,phase:rand()*6.28});}
   const world={props,creatures,interactables,ambient,places:PLACES};
   expandWorld(world,add);
-  populateFrontier(world,add,{WIDTH,HEIGHT,random,noise,biomeAt,pathDistance,canWalk,propsNear,inVillage});
+  populateFrontier(world,add,{MIN_X,MIN_Y,MAX_X,MAX_Y,random,noise,biomeAt,pathDistance,canWalk,propsNear,inVillage});
   addAdventure(world,add);
   plantRootwalls(world,{canWalk,biomeAt,inVillage,propsNear,segmentDistance});
   return world;
@@ -209,6 +217,7 @@ function expandWorld(world,add){
   // Local groves alternate with open browsing ground and wet pockets.
   for(let n=0;n<6900;n++){
     const x=65+rand()*(CORE_SIZE.width-130),y=90+rand()*(CORE_SIZE.height-180);
+    if(inFrontier(x,y))continue;
     if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)continue;
     const site=regionAt(x,y),b=biomeAt(x,y),density=noise(x+174,y-31,250),pd=pathDistance(x,y);
     if(pd<35||waterAt(x,y)||lavaAt(x,y)||CAMP_SITES.some(c=>dist(c,{x,y})<125)||EXPANSION_PLACES.some(p=>dist(p,{x,y})<55))continue;
@@ -218,6 +227,7 @@ function expandWorld(world,add){
   // A separate low layer follows habitat resources, with clear patches between clumps.
   for(let n=0;n<5900;n++){
     const x=60+rand()*(CORE_SIZE.width-120),y=90+rand()*(CORE_SIZE.height-180);if(x<LEGACY_WIDTH&&y<LEGACY_HEIGHT)continue;
+    if(inFrontier(x,y))continue;
     const b=biomeAt(x,y),pd=pathDistance(x,y);if(pd<26||waterAt(x,y)||lavaAt(x,y)||CAMP_SITES.some(c=>dist(c,{x,y})<110)||noise(x,y,65)<.39)continue;
     const pool=DECORATION_POOLS[b],asset=pick(pool);if(propsNear(world,x,y,24).some(p=>p.solid&&dist(p,{x,y})<p.solid+8))continue;
     put(asset,x,y,{resource:asset.name,vegetation:!asset.solid,size:Math.round(asset.size*(.8+rand()*.45)),flip:rand()<.5});
@@ -315,7 +325,7 @@ export function movingCoverNear(world,x,y,r=80){
   return out;
 }
 export function canWalk(world,x,y,r=8,ignore=null){
-  if(x<30||y<40||x>WIDTH-30||y>HEIGHT-30||waterAt(x,y)||lavaAt(x,y))return false;
+  if(x<MIN_X+30||y<MIN_Y+40||x>MAX_X-30||y>MAX_Y-30||waterAt(x,y)||lavaAt(x,y))return false;
   for(const p of propsNear(world,x,y,sceneryIndex(world).maxSolid+r)){if(!p.solid||p.removed)continue;if(Math.hypot((x-p.x),(y-p.y)*1.4)<p.solid+r)return false;}
   for(const c of movingCoverNear(world,x,y,r+20))if(c!==ignore&&Math.hypot(x-c.x,y-c.y)<c.solid+r-.001)return false;
   for(const wall of world.barriers||[])if(wall.life>0&&segmentDistance(x,y,wall.a,wall.b)<r+6)return false;

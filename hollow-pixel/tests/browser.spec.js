@@ -216,8 +216,9 @@ test('the tenfold frontier renders dense habitats, working refuges and a zoomabl
   for(const district of districts){
     await page.evaluate(d=>{const {game:g,renderer:r}=window.__hollow;g.player.x=d.x;g.player.y=d.y;g.player.invulnerable=100;g.autoAttack=false;g.paused=false;r.camera.x=d.x;r.camera.y=d.y*.72;},district);
     await page.waitForTimeout(200);await page.screenshot({path:`artifacts/frontier-${district.id}.png`});
-    const state=await page.evaluate(()=>{const r=window.__hollow.renderer;return {near:r.nearProps.length,cache:r.ground.tiles.size};});
+    const state=await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow,screen=r.screen(g.player.x,g.player.y);return {near:r.nearProps.length,cache:r.ground.tiles.size,onScreen:screen.x>0&&screen.x<r.width&&screen.y>0&&screen.y<r.height};});
     expect(state.near).toBeLessThan(1500);expect(state.near).toBeGreaterThan(50);expect(state.cache).toBeLessThanOrEqual(48);
+    expect(state.onScreen).toBe(true);
   }
   const mossway=districts.find(d=>d.id==='mossway');
   await page.evaluate(d=>{const {game:g,renderer:r}=window.__hollow;g.quests['briar-road']='complete';g.refreshHunts();g.player.x=d.hub.x-15;g.player.y=d.hub.y-10;g.player.invulnerable=100;g.target=null;r.camera.x=g.player.x;r.camera.y=g.player.y*.72;},mossway);
@@ -225,11 +226,25 @@ test('the tenfold frontier renders dense habitats, working refuges and a zoomabl
   await expect(page.getByRole('dialog',{name:'Fern',exact:true})).toBeVisible();await page.locator('[data-quest-action="road-mossway"]').click();
   expect(await page.evaluate(()=>window.__hollow.game.quests['road-mossway'])).toBe('active');
   await page.keyboard.press('m');await page.getByRole('button',{name:'Whole world',exact:true}).click();await page.screenshot({path:'artifacts/frontier-whole-world.png'});
+  expect(await page.evaluate(()=>window.__hollow.renderer.mapView)).toEqual({zoom:1,x:1080,y:855});
   await page.getByRole('button',{name:'Find me',exact:true}).click();expect(await page.evaluate(()=>window.__hollow.renderer.mapView.zoom)).toBe(8);
   const canvas=page.locator('#atlas-canvas'),box=await canvas.boundingBox(),before=await page.evaluate(()=>window.__hollow.renderer.mapView.x);
   await page.mouse.move(box.x+box.width*.6,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.4,box.y+box.height*.5,{steps:5});await page.mouse.up();
   expect(await page.evaluate(()=>window.__hollow.renderer.mapView.x)).toBeGreaterThan(before);await page.screenshot({path:'artifacts/frontier-zoom-map.png'});
   await page.getByRole('button',{name:'Whole world',exact:true}).click();expect(await page.evaluate(()=>window.__hollow.renderer.mapView.zoom)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('outer seasonal resource gardens render around the centered world',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  for(const biome of ['spring','autumn','winter','ember']){
+    const state=await page.evaluate(async biome=>{
+      const {FRONTIER_HABITATS}=await import('/src/frontier.js'),{canWalk}=await import('/src/world.js'),site=FRONTIER_HABITATS.find(s=>s.biome===biome);
+      const {game:g,renderer:r}=window.__hollow,resident=g.creatures.find(c=>c.site===site.id);Object.assign(g.player,{x:resident.x,y:resident.y,invulnerable:100});g.autoAttack=false;g.paused=false;r.camera.x=g.player.x;r.camera.y=g.player.y*.72;
+      return {walkable:canWalk(g.world,g.player.x,g.player.y,5),x:g.player.x,y:g.player.y};
+    },biome);
+    expect(state.walkable).toBe(true);await page.waitForTimeout(250);await page.screenshot({path:`artifacts/frontier-garden-${biome}.png`});
+  }
   expect(errors).toEqual([]);
 });
 

@@ -1,5 +1,5 @@
 // New local place names adapt the canonical Hollow ecology without rewriting it.
-// Coordinates keep Willowmere and its first chapter intact in the northwest.
+// Coordinates keep Willowmere and its first chapter intact at the world's center.
 export const EXPANSION_PLACES=[
   {id:'redleaf',name:'Redleaf Post',x:2670,y:850,biome:'autumn',description:'Couriers rest where the leaf road turns toward the flowering east.'},
   {id:'cuphorn-pools',name:'The Cuphorn Pools',x:3500,y:590,biome:'spring',description:'New mineral bowls and old ponds trace the route of horn-borne gardens.'},

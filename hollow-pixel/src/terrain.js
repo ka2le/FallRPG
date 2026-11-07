@@ -1,5 +1,6 @@
 import { BIOMES, PLACES } from './data.js';
-import { WIDTH, HEIGHT, HOME, random, hash, noise, biomeAt, terrainAt, pathDistance, riverX, waterAt, BRIDGES } from './world.js';
+import { MIN_X, MIN_Y, MAX_X, MAX_Y, HOME, random, hash, noise, biomeAt, terrainAt, pathDistance, riverX, waterAt, BRIDGES } from './world.js';
+import { inFrontier } from './frontier.js';
 const Y_SCALE=.72;
 const makeCanvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
 const mix=(a,b,t)=>{const ca=a.match(/\w\w/g).map(v=>parseInt(v,16)),cb=b.match(/\w\w/g).map(v=>parseInt(v,16));return '#'+ca.map((c,i)=>Math.round(c+(cb[i]-c)*t).toString(16).padStart(2,'0')).join('');};
@@ -32,7 +33,7 @@ function blendedColor(weights,palettes,t){
 export class TerrainCache{
   constructor(){this.tileSize=384;this.limit=48;this.tiles=new Map();this.bakedCount=0;}
   get(tx,ty){const key=`${tx}:${ty}`;let tile=this.tiles.get(key);if(tile)this.tiles.delete(key);else {tile=this.bakeTile(tx,ty);this.bakedCount++;}this.tiles.set(key,tile);while(this.tiles.size>this.limit)this.tiles.delete(this.tiles.keys().next().value);return tile;}
-  draw(c,left,top,width,height){const size=this.tileSize;for(let y=Math.max(0,Math.floor(top/size));y<=Math.min(Math.ceil(HEIGHT*Y_SCALE/size)-1,Math.floor((top+height)/size));y++)for(let x=Math.max(0,Math.floor(left/size));x<=Math.min(Math.ceil(WIDTH/size)-1,Math.floor((left+width)/size));x++)c.drawImage(this.get(x,y),Math.round(x*size-left),Math.round(y*size-top));}
+  draw(c,left,top,width,height){const size=this.tileSize;for(let y=Math.max(Math.floor(MIN_Y*Y_SCALE/size),Math.floor(top/size));y<=Math.min(Math.ceil(MAX_Y*Y_SCALE/size)-1,Math.floor((top+height)/size));y++)for(let x=Math.max(Math.floor(MIN_X/size),Math.floor(left/size));x<=Math.min(Math.ceil(MAX_X/size)-1,Math.floor((left+width)/size));x++)c.drawImage(this.get(x,y),Math.round(x*size-left),Math.round(y*size-top));}
   ellipse(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(Math.round(x),Math.round(y),rx,ry,0,0,Math.PI*2);c.fill();}
   bakeTile(tx,ty){
     const size=this.tileSize,x0=tx*size,y0=ty*size/Y_SCALE,x1=x0+size,y1=y0+size/Y_SCALE;
@@ -45,7 +46,7 @@ export class TerrainCache{
       if(t.wet>.67)col=mix(col,t.biome==='spring'?'#314e40':t.biome==='autumn'?'#534837':t.biome==='winter'?'#8caeb8':'#3b4144',.55);
       if(t.path<15+noise(x,y,40)*7)col=blendedColor(weights,pathPalettes,hash(x,y));
       else if(t.path<24)col=mix(col,t.biome==='winter'?'#b8c8c3':'#a29465',.45);
-      const riverD=Math.abs(x-riverX(y));
+      const riverD=inFrontier(x,y)?Infinity:Math.abs(x-riverX(y));
       if(riverD<41&&!t.bridge)col=t.biome==='winter'?'#d4ded2':'#7d8f69';
       if(t.water)col=blendedColor(weights,waterPalettes,n);
       if(t.lava)col=['#bc643f','#de8250','#ecaa60'][Math.floor(n*3)];

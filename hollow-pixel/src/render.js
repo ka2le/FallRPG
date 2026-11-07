@@ -2,7 +2,7 @@ import { TerrainCache } from './terrain.js';
 import { cellBounds, characterFrame, environmentFrame, creatureAppearance } from './sprites.js';
 import { BIOMES, SPECIES, PLACES, SPELL_BY_ID } from './data.js';
 import { ENCOUNTERS } from './adventure.js';
-import { WIDTH, HEIGHT, HOME, hash, biomeAt, terrainAt, seamX, waterAt, dist, clamp, PATHS, propsNear } from './world.js';
+import { WIDTH, HEIGHT, MIN_X, MIN_Y, MAX_X, MAX_Y, HOME, hash, biomeAt, terrainAt, seamX, waterAt, dist, clamp, PATHS, propsNear } from './world.js';
 
 export const Y_SCALE=.72;
 const makeCanvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
@@ -42,9 +42,9 @@ export class Renderer{
   world(clientX,clientY){const r=this.canvas.getBoundingClientRect();return{x:(clientX-r.left)*this.width/r.width+this.left,y:((clientY-r.top)*this.height/r.height+this.top)/Y_SCALE};}
   bakeMap(){
     const w=600,h=Math.round(w*HEIGHT/WIDTH),map=makeCanvas(w,h),c=map.getContext('2d');
-    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const t=terrainAt(x/w*WIDTH,y/h*HEIGHT);c.fillStyle=t.water?'#477c7a':t.lava?'#cb8759':({spring:'#5b7954',autumn:'#987349',winter:'#bacdcc',ember:'#68605a'})[t.biome];c.fillRect(x,y,2,2);}
-    for(const p of this.game.world.props)if(p.tree&&!p.removed){c.fillStyle='#253d31';c.globalAlpha=.18;c.fillRect(p.x/WIDTH*w,p.y/HEIGHT*h,1,1);}c.globalAlpha=1;
-    c.strokeStyle='#d1bc87';c.lineWidth=.8;for(const path of PATHS){c.beginPath();path.forEach((p,i)=>i?c.lineTo(p.x/WIDTH*w,p.y/HEIGHT*h):c.moveTo(p.x/WIDTH*w,p.y/HEIGHT*h));c.stroke();}
+    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const t=terrainAt(MIN_X+x/w*WIDTH,MIN_Y+y/h*HEIGHT);c.fillStyle=t.water?'#477c7a':t.lava?'#cb8759':({spring:'#5b7954',autumn:'#987349',winter:'#bacdcc',ember:'#68605a'})[t.biome];c.fillRect(x,y,2,2);}
+    for(const p of this.game.world.props)if(p.tree&&!p.removed){c.fillStyle='#253d31';c.globalAlpha=.18;c.fillRect((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h,1,1);}c.globalAlpha=1;
+    c.strokeStyle='#d1bc87';c.lineWidth=.8;for(const path of PATHS){c.beginPath();path.forEach((p,i)=>i?c.lineTo((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h):c.moveTo((p.x-MIN_X)/WIDTH*w,(p.y-MIN_Y)/HEIGHT*h));c.stroke();}
     return map;
   }
   ellipse(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(Math.round(x),Math.round(y),rx,ry,0,0,Math.PI*2);c.fill();}
@@ -77,7 +77,7 @@ export class Renderer{
     // A small dead zone gives walking a steady, room-like feel.
     const k=1-Math.exp(-dt*18),tx=clamp(this.camera.x,p.x-44,p.x+44),ty=clamp(this.camera.y,p.y*Y_SCALE-32,p.y*Y_SCALE+24);
     this.camera.x+=(tx-this.camera.x)*k;this.camera.y+=(ty-this.camera.y)*k;
-    this.camera.x=clamp(this.camera.x,this.width/2,WIDTH-this.width/2);this.camera.y=clamp(this.camera.y,this.height/2,HEIGHT*Y_SCALE-this.height/2);
+    this.camera.x=clamp(this.camera.x,MIN_X+this.width/2,MAX_X-this.width/2);this.camera.y=clamp(this.camera.y,MIN_Y*Y_SCALE+this.height/2,MAX_Y*Y_SCALE-this.height/2);
     c.fillStyle='#324d3c';c.fillRect(0,0,this.width,this.height);c.imageSmoothingEnabled=false;
     this.ground.draw(c,this.left,this.top,this.width,this.height);
     this.drawWater();this.drawTrails();this.drawAim();this.drawLivingHedges();
@@ -209,13 +209,13 @@ export class Renderer{
   drawMinimap(canvas,large=false){
     if(!this.mini)return;
     const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,g=this.game,labelBoxes=[];
-    const view=large?(this.mapView||{zoom:1,x:WIDTH/2,y:HEIGHT/2}):{zoom:1,x:WIDTH/2,y:HEIGHT/2};
-    const zoom=clamp(view.zoom,1,16),cx=clamp(view.x,WIDTH/zoom/2,WIDTH-WIDTH/zoom/2),cy=clamp(view.y,HEIGHT/zoom/2,HEIGHT-HEIGHT/zoom/2);
+    const view=large?(this.mapView||{zoom:1,x:MIN_X+WIDTH/2,y:MIN_Y+HEIGHT/2}):{zoom:1,x:MIN_X+WIDTH/2,y:MIN_Y+HEIGHT/2};
+    const zoom=clamp(view.zoom,1,16),cx=clamp(view.x,MIN_X+WIDTH/zoom/2,MAX_X-WIDTH/zoom/2),cy=clamp(view.y,MIN_Y+HEIGHT/zoom/2,MAX_Y-HEIGHT/zoom/2);
     if(large)this.mapView={zoom,x:cx,y:cy};
     const point=(x,y)=>({x:(x-cx)/WIDTH*w*zoom+w/2,y:(y-cy)/HEIGHT*h*zoom+h/2});
     const visible=p=>p.x>=-10&&p.x<=w+10&&p.y>=-10&&p.y<=h+10;
     c.imageSmoothingEnabled=false;c.clearRect(0,0,w,h);
-    c.drawImage(this.mini,(cx/WIDTH-.5/zoom)*this.mini.width,(cy/HEIGHT-.5/zoom)*this.mini.height,this.mini.width/zoom,this.mini.height/zoom,0,0,w,h);
+    c.drawImage(this.mini,((cx-MIN_X)/WIDTH-.5/zoom)*this.mini.width,((cy-MIN_Y)/HEIGHT-.5/zoom)*this.mini.height,this.mini.width/zoom,this.mini.height/zoom,0,0,w,h);
     if(large)for(const camp of ENCOUNTERS){
       const p=point(camp.x,camp.y),done=g.cleared.has(camp.id);if(!visible(p))continue;
       c.fillStyle=done?'#9fc58d':camp.level>g.player.level+1?'#d88c75':'#e5c584';c.beginPath();c.arc(p.x,p.y,camp.elite?5:3,0,Math.PI*2);c.fill();
@@ -240,7 +240,7 @@ export class Renderer{
     }
     const p=point(g.player.x,g.player.y);c.fillStyle='#fff3cc';c.strokeStyle='#243d30';c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,large?5:3,0,Math.PI*2);c.fill();c.stroke();
     if(large){c.font='11px Verdana';c.textAlign='left';c.fillStyle='#f1ddac';c.strokeStyle='#23392e';c.lineWidth=3;const caption=`${Math.round(WIDTH/zoom)} units across · Bounties: level / ✓ cleared · Red: dangerous`;c.strokeText(caption,12,h-12);c.fillText(caption,12,h-12);}
-    else{c.strokeStyle='#e8d4a780';c.strokeRect((this.camera.x-this.width/2)/WIDTH*w,(this.camera.y-this.height/2)/(HEIGHT*Y_SCALE)*h,this.width/WIDTH*w,this.height/(HEIGHT*Y_SCALE)*h);}
+    else{c.strokeStyle='#e8d4a780';c.strokeRect((this.camera.x-this.width/2-MIN_X)/WIDTH*w,(this.camera.y-this.height/2-MIN_Y*Y_SCALE)/(HEIGHT*Y_SCALE)*h,this.width/WIDTH*w,this.height/(HEIGHT*Y_SCALE)*h);}
   }
   hitCreature(point){return this.game.creatures.filter(c=>!c.dead&&Math.abs(c.x-point.x)<SPECIES[c.type].size*.45&&point.y*Y_SCALE>c.y*Y_SCALE-SPECIES[c.type].size&&point.y<c.y+12).sort((a,b)=>b.y-a.y)[0];}
   hitInteractable(point){return this.game.world.interactables.filter(i=>!i.collected&&Math.abs(point.x-i.x)<22&&point.y>i.y-60&&point.y<i.y+18).sort((a,b)=>b.y-a.y)[0];}

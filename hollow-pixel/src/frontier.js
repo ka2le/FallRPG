@@ -1,36 +1,50 @@
 // Ten times the 6000 × 4200 pre-RPG landscape, measured in playable area.
 export const WORLD_SIZE={width:20000,height:12600,baselineArea:6000*4200};
+// Keep the first chapter's coordinates (and saves), grow outward around its hearth.
+export const WORLD_BOUNDS={minX:-8920,minY:-5445,maxX:11080,maxY:7155};
 export const CORE_SIZE={width:7200,height:4800};
 const districts=[
   ['longbriar','Longbriar Forest',9000,1800,'spring',7,'Elowen'],
-  ['ambermarch','The Amber March',13000,1800,'autumn',10,'Hesta'],
-  ['sunken-cinders','Sunken Cinders',17500,1800,'ember',14,'Cairn'],
-  ['mossway','The Long Mossway',1800,6500,'spring',5,'Fern'],
-  ['redwood','Redwood Pilgrim Trail',4800,6500,'autumn',7,'Orla'],
-  ['bellwood','Bellwood Expanse',9000,5800,'spring',9,'Iven'],
-  ['ash-corridor','The Ash Corridor',13000,5800,'ember',12,'Soot'],
-  ['rime-forest','The Rime Forest',17500,5800,'winter',16,'Edda'],
-  ['southern-canopy','The Southern Canopy',1800,10500,'spring',8,'Tansy'],
-  ['burial-road','The Long Burial Road',4800,10500,'autumn',10,'Yarrow'],
-  ['winter-pilgrimage','Winter Pilgrimage',9000,10300,'winter',12,'Brann'],
-  ['ember-deeps','The Ember Deeps',13000,10300,'ember',15,'Cressa'],
-  ['lastwood','Lastwood',17500,10300,'winter',18,'Vale'],
+  ['ambermarch','The Amber March',8600,-1800,'autumn',10,'Hesta'],
+  ['sunken-cinders','Sunken Cinders',5300,-3800,'ember',14,'Cairn'],
+  ['mossway','The Long Mossway',-1500,1000,'spring',5,'Fern'],
+  ['redwood','Redwood Pilgrim Trail',-3500,3800,'autumn',7,'Orla'],
+  ['bellwood','Bellwood Expanse',-1400,-1800,'spring',9,'Iven'],
+  ['ash-corridor','The Ash Corridor',1300,-3600,'ember',12,'Soot'],
+  ['rime-forest','The Rime Forest',-4700,-3100,'winter',16,'Edda'],
+  ['southern-canopy','The Southern Canopy',-5200,600,'spring',8,'Tansy'],
+  ['burial-road','The Long Burial Road',-6900,3600,'autumn',10,'Yarrow'],
+  ['winter-pilgrimage','Winter Pilgrimage',-7200,-1700,'winter',12,'Brann'],
+  ['ember-deeps','The Ember Deeps',3000,5900,'ember',15,'Cressa'],
+  ['lastwood','Lastwood',8800,5500,'winter',18,'Vale'],
 ];
 const threats={spring:['seedling','rootknife','petalmaw'],autumn:['prowler','duskcoil','prowler'],winter:['stormbell','tappinghunter','stormbell'],ember:['wyrm','glassbrood','wyrm']};
-export const FRONTIER_DISTRICTS=districts.map(([id,name,x,y,biome,level,keeper])=>({
+// Orient each expedition independently; winding paths join its hunting grounds.
+export const FRONTIER_DISTRICTS=districts.map(([id,name,x,y,biome,level,keeper],index)=>{
+ const angle=[.15,-.4,.32,-.22,.5,-.3,.25,-.5,.18,-.25,.4,-.12,.3][index];
+ const local=(dx,dy)=>({x:x+Math.round(dx*Math.cos(angle)-dy*Math.sin(angle)),y:y+Math.round(dx*Math.sin(angle)+dy*Math.cos(angle))});
+ return {
   id,name,x,y,biome,level,keeper,kind:biome==='autumn'?'burial-mounds':'forest-trail',
-  hub:{x:x-1000,y:y+650},
+  local,hub:local(-850,520),
   camps:[
-    {id:`${id}-approach`,name:`${name}: the Approach`,x:x-400,y:y-450,level:level-1,types:[threats[biome][0],threats[biome][1],threats[biome][0]]},
-    {id:`${id}-heart`,name:`${name}: the Heart`,x:x+500,y:y-300,level,types:[threats[biome][1],threats[biome][2],threats[biome][1]]},
-    {id:`${id}-warden`,name:`${name}: the Warden`,x:x+800,y:y+600,level:level+1,types:[threats[biome][2],threats[biome][1],threats[biome][0]],elite:true},
+    {id:`${id}-approach`,name:`${name}: the Approach`,...local(-400,-450),level:level-1,types:[threats[biome][0],threats[biome][1],threats[biome][0]]},
+    {id:`${id}-heart`,name:`${name}: the Heart`,...local(500,-300),level,types:[threats[biome][1],threats[biome][2],threats[biome][1]]},
+    {id:`${id}-warden`,name:`${name}: the Warden`,...local(800,600),level:level+1,types:[threats[biome][2],threats[biome][1],threats[biome][0]],elite:true},
   ],
-}));
-export const inFrontier=(x,y)=>x>=CORE_SIZE.width||y>=CORE_SIZE.height;
+};});
+export function inFrontier(x,y){
+  if(x>=0&&y>=0&&x<2400&&y<1800)return false;
+  // Scalloped woodland margins hide the original rectangular map boundary.
+  const west=80+Math.sin(y*.0021)*65,north=70+Math.sin(x*.0018)*55;
+  const east=6900+Math.sin(y*.0017)*170+Math.sin(y*.0043)*70;
+  const south=4480+Math.sin(x*.0011)*180+Math.sin(x*.0033)*90;
+  return x<west||y<north||x>=east||y>=south;
+}
 export function frontierAt(x,y){
   let nearest=null,best=Infinity;
   // Broad domains have gently irregular seams, shared by trees and wildlife.
-  const wx=x+Math.sin(y*.0013)*100,wy=y+Math.sin(x*.0011)*90;
+  for(const d of FRONTIER_DISTRICTS)if((x-d.x)**2+(y-d.y)**2<1250**2)return d;
+  const wx=x+Math.sin(y*.0013)*430+Math.sin(y*.0031)*160,wy=y+Math.sin(x*.0011)*380+Math.sin(x*.0027)*150;
   for(const d of FRONTIER_DISTRICTS){const distance=(wx-d.x)**2+(wy-d.y)**2;if(distance<best){best=distance;nearest=d;}}
   return nearest;
 }
@@ -40,25 +54,41 @@ export const FRONTIER_PLACES=FRONTIER_DISTRICTS.flatMap(d=>[
   {id:`landmark-${d.id}`,name:d.name,x:d.x,y:d.y,biome:d.biome,description:`A long forest expedition: three named hunting grounds, roadside patrols, and an elite warden. Return to ${d.keeper} for the road bounty.`},
 ]);
 export const FRONTIER_LOOPS=FRONTIER_DISTRICTS.map(d=>[
-  d.hub,{x:d.x-650,y:d.y+150},d.camps[0],{x:d.x+150,y:d.y-650},d.camps[1],
-  {x:d.x+1000,y:d.y+150},d.camps[2],{x:d.x+200,y:d.y+900},d.hub,
+  d.hub,d.local(-700,80),d.camps[0],d.local(40,-710),d.camps[1],
+  d.local(960,40),d.camps[2],d.local(100,850),d.hub,
 ]);
 // Connect every refuge to the main road network; loops offer a way home.
 const hubs=Object.fromEntries(FRONTIER_DISTRICTS.map(d=>[d.id,d.hub]));
 const links=[
   [{x:6910,y:950},hubs.longbriar],
-  [{x:1030,y:3620},{x:1500,y:4300},hubs.mossway],
-  [{x:4330,y:3530},{x:4800,y:4300},hubs.redwood],
-  [hubs.longbriar,hubs.ambermarch,hubs['sunken-cinders']],
-  [hubs.mossway,hubs.redwood,hubs.bellwood,hubs['ash-corridor'],hubs['rime-forest']],
-  [hubs['southern-canopy'],hubs['burial-road'],hubs['winter-pilgrimage'],hubs['ember-deeps'],hubs.lastwood],
-  [hubs.longbriar,hubs.bellwood,hubs['winter-pilgrimage']],
-  [hubs.ambermarch,hubs['ash-corridor'],hubs['ember-deeps']],
-  [hubs['sunken-cinders'],hubs['rime-forest'],hubs.lastwood],
-  [hubs.mossway,hubs['southern-canopy']],
-  [hubs.redwood,hubs['burial-road']],
+  [{x:260,y:790},{x:-350,y:540},hubs.mossway],
+  [{x:1120,y:160},{x:780,y:-420},hubs.bellwood],
+  [{x:1030,y:3620},{x:1030,y:3760},{x:300,y:3850},{x:-450,y:3310},hubs.redwood],
+  [{x:4330,y:3530},{x:4100,y:4900},hubs['ember-deeps']],
+  [hubs.longbriar,hubs.ambermarch,hubs['sunken-cinders'],hubs['ash-corridor'],hubs.bellwood,hubs['rime-forest'],hubs['winter-pilgrimage']],
+  [hubs.bellwood,hubs.mossway,hubs['southern-canopy'],hubs['winter-pilgrimage']],
+  [hubs.mossway,hubs.redwood,hubs['burial-road'],hubs['southern-canopy']],
+  [hubs['ember-deeps'],hubs.lastwood,hubs.longbriar],
 ];
-export const FRONTIER_PATHS=[...links,...FRONTIER_LOOPS];
+// Smooth bends break up the old long horizontal/vertical road lattice.
+function winding(path,seed){
+ const result=[path[0]];
+ for(let i=1;i<path.length;i++){
+   const a=path[i-1],b=path[i],dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),steps=Math.max(2,Math.ceil(length/240));
+   for(let n=1;n<=steps;n++){
+     const t=n/steps,bend=Math.sin(t*Math.PI)*Math.sin(seed*1.7+i*2.3)*Math.min(230,length*.14)+Math.sin(t*Math.PI*2)*Math.min(75,length*.045);
+     result.push(n===steps?b:{x:a.x+dx*t-dy/length*bend,y:a.y+dy*t+dx/length*bend});
+   }
+ }return result;
+}
+export const FRONTIER_PATHS=[...links,...FRONTIER_LOOPS].map(winding);
+
+const habitats={spring:['pond-garden','fog-garden','burrow-ridges'],autumn:['burial-mounds','corpse-garden','feeding-terrace'],winter:['frozen-larder','snowbell-garden','cold-garden'],ember:['mineral-pool','vent-nursery','ash-garden']};
+export const FRONTIER_HABITATS=FRONTIER_DISTRICTS.flatMap((d,index)=>habitats[d.biome].map((kind,n)=>({
+ id:`${d.id}-${kind}`,district:d.id,biome:d.biome,kind,...d.local([-170,630,-560][n],[-20,210,80][n]),radius:145+n*22,
+ water:n===0&&d.biome==='spring',lava:n===0&&d.biome==='ember',phase:index*.7+n,
+})));
+export function frontierHabitatAt(x,y){return FRONTIER_HABITATS.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
 export const FRONTIER_REWARDS=Object.fromEntries(FRONTIER_DISTRICTS.map((d,index)=>{
   const slot=['weapon','robe','charm','boots'][index%4],level=d.level;
   const stats=slot==='weapon'?{power:level*.1,damage:level+2}:slot==='robe'?{health:level*8,armor:Math.min(.4,level*.022)}:slot==='charm'?{power:level*.045,mana:level*5,regen:2}: {speed:Math.min(.4,.15+level*.012),health:level*3};
