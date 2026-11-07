@@ -29,3 +29,18 @@ test('save round-trip preserves bindings, quests, restored crossings and defeate
 test('malformed saves cannot inject invalid positions, spells or quest states',()=>{const g=new Game({version:1,player:{x:Infinity,y:-100,hp:-1,level:999},bindings:{q:'bogus'},quests:{herd:'garbage'},observed:'not an array'});assert.equal(g.player.x,HOME.x);assert.equal(g.player.hp,1);assert.equal(g.player.level,50);assert.equal(g.bindings.q,'bramble');assert.equal(g.quests.herd,'offered');assert.equal(g.observed.size,0);});
 test('a paused game freezes cooldowns and combat',()=>{const g=battle();g.setBinding('q','bind');g.cast('q');const time=g.time,cd=g.cooldowns.bind;g.paused=true;advance(g,3);assert.equal(g.time,time);assert.equal(g.cooldowns.bind,cd);assert.equal(g.cast('f'),false);});
 test('keyboard movement is normalized and updates facing',()=>{const g=battle(),x=g.player.x;g.update(.05,{right:true,up:true});assert.ok(Math.abs(Math.hypot(g.player.x-x,g.player.y-855)-4)<.01);assert.equal(g.player.direction,'up');});
+
+test('click navigation walks around solid scenery and preserves automatic casting',()=>{
+  const g=battle();g.creatures=[];g.autoAttack=true;g.world.props=[{x:1120,y:855,solid:14}];
+  g.navigateTo(1160,855);assert.ok(g.route.length>1);assert.equal(g.autoAttack,true);
+  for(let n=0;n<200;n++){g.update(.05);assert.ok(Math.hypot(g.player.x-1120,g.player.y-855)>=23-.01);}
+  assert.ok(Math.hypot(g.player.x-1160,g.player.y-855)<5);assert.equal(g.destination,null);
+  g.autoAttack=false;g.navigateTo(1080,855);assert.equal(g.autoAttack,false);
+});
+
+test('blocked destinations do not start walking and keyboard input cancels a route',()=>{
+  const g=battle();g.world.props=[{x:1120,y:855,solid:14}];g.navigateTo(1120,855);
+  assert.equal(g.destination,null);assert.deepEqual(g.route,[]);
+  g.navigateTo(1160,855);assert.ok(g.route.length);g.update(.05,{left:true});
+  assert.equal(g.destination,null);assert.deepEqual(g.route,[]);
+});

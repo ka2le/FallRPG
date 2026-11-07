@@ -43,9 +43,9 @@ test('all four habitats, full sprite silhouettes and compact layouts render',asy
 
 test('keyboard walking, mode attacks and deliberate spell placement work',async({page})=>{
   const x=await page.evaluate(()=>window.__hollow.game.player.x);await page.keyboard.down('d');await page.waitForFunction(x=>window.__hollow.game.player.x>x+10,x);await page.keyboard.up('d');
-  const before=await page.evaluate(()=>({x:window.__hollow.game.player.x,y:window.__hollow.game.player.y}));await page.mouse.click(300,600);await page.waitForTimeout(200);
-  expect(await page.evaluate(()=>({x:window.__hollow.game.player.x,y:window.__hollow.game.player.y}))).toEqual(before);
-  await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];game.safeZonesEnabled=false;game.player.x=1080;game.player.y=855;game.creatures=game.creatures.filter(c=>c.type==='seedling').slice(0,1);const c=game.creatures[0];Object.assign(c,{x:1160,y:855,homeX:1160,homeY:855,hp:200,maxHp:200,root:100});game.target=null;renderer.camera.x=1080;renderer.camera.y=855*.72;});
+  const before=await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];const s=renderer.screen(game.player.x+60,game.player.y),r=renderer.canvas.getBoundingClientRect();return {x:game.player.x,clickX:s.x/renderer.width*r.width,clickY:s.y/renderer.height*r.height};});
+  await page.mouse.click(before.clickX,before.clickY);await page.waitForFunction(x=>window.__hollow.game.player.x>x+10,before.x);
+  await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];game.safeZonesEnabled=false;game.player.x=1080;game.player.y=855;game.route=[];game.destination=null;game.creatures=game.creatures.filter(c=>c.type==='seedling').slice(0,1);const c=game.creatures[0];Object.assign(c,{x:1160,y:855,homeX:1160,homeY:855,hp:200,maxHp:200,root:100});game.target=null;renderer.camera.x=1080;renderer.camera.y=855*.72;});
   await page.waitForFunction(()=>window.__hollow.game.creatures[0].hp<200);
   await page.keyboard.press('3');expect(await page.evaluate(()=>window.__hollow.game.stance)).toBe('siphon');
   await page.keyboard.press('f');expect(await page.evaluate(()=>window.__hollow.game.player.shield)).toBe(45);
@@ -68,6 +68,33 @@ test('P downloads the current view and works with menus open',async({page})=>{
     expect(await page.evaluate(()=>window.__hollow.ui.modal)).toBe(menu?'grimoire':null);
   }
   expect(errors).toEqual([]);
+});
+
+test('mobile taps walk, place spells, select creatures and talk without extra controls',async({browser})=>{
+  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const mobile=await context.newPage(),errors=[];mobile.on('pageerror',e=>errors.push(e.message));
+  try{
+    await mobile.goto('/?test');await mobile.waitForFunction(()=>!!window.__hollow);
+    await mobile.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];game.world.interactables=[];game.creatures=[];game.player.x=1080;game.player.y=855;game.route=[];game.destination=null;renderer.camera.x=1080;renderer.camera.y=855*.72;});
+    const point=async(x,y)=>mobile.evaluate(({x,y})=>{const {renderer}=window.__hollow,s=renderer.screen(x,y),r=renderer.canvas.getBoundingClientRect();return{x:r.left+s.x/renderer.width*r.width,y:r.top+s.y/renderer.height*r.height};},{x,y});
+    let p=await point(1140,855);await mobile.touchscreen.tap(p.x,p.y);
+    await mobile.waitForFunction(()=>window.__hollow.game.player.x>1090);
+    expect(await mobile.evaluate(()=>window.__hollow.game.autoAttack)).toBe(true);
+    await mobile.waitForFunction(()=>!window.__hollow.game.destination);
+    await mobile.locator('[data-cast="q"]').tap();expect(await mobile.evaluate(()=>window.__hollow.game.aiming?.slot)).toBe('q');
+    p=await point(1190,855);await mobile.touchscreen.tap(p.x,p.y);
+    expect(await mobile.evaluate(()=>[window.__hollow.game.world.barriers.length,window.__hollow.game.destination])).toEqual([1,null]);
+    await mobile.evaluate(()=>{const {game}=window.__hollow;game.creatures=[{id:'tap-target',type:'seedling',x:game.player.x-45,y:game.player.y,hp:100,maxHp:100,root:100,stun:0,slow:0,flash:0,attack:100,walk:0,face:1}];});
+    const c=await mobile.evaluate(()=>window.__hollow.game.creatures[0]);p=await point(c.x,c.y-15);await mobile.touchscreen.tap(p.x,p.y);
+    expect(await mobile.evaluate(()=>window.__hollow.game.target)).toBe('tap-target');
+    await mobile.screenshot({path:'artifacts/mobile-touch.png'});
+    await mobile.reload();await mobile.waitForFunction(()=>!!window.__hollow);
+    await mobile.evaluate(()=>{const {game,renderer}=window.__hollow;game.player.x=1040;game.player.y=825;renderer.camera.x=1040;renderer.camera.y=825*.72;});
+    await mobile.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');
+    const npc=await mobile.evaluate(()=>window.__hollow.game.nearby);p=await point(npc.x,npc.y-24);await mobile.touchscreen.tap(p.x,p.y);
+    await expect(mobile.getByRole('dialog',{name:'Rowan',exact:true})).toBeVisible();
+    expect(errors).toEqual([]);
+  }finally{await context.close();}
 });
 
 test('expanded regions, new atlases, wildlife journal and bounded terrain cache render',async({page})=>{

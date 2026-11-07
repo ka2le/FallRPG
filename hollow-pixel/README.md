@@ -18,7 +18,9 @@ Start by speaking to **Rowan**, beside the village waypost. **Mara** stands outs
 
 | Control | Action |
 | --- | --- |
-| WASD / arrow keys | Walk |
+| Tap / click ground | Walk to that point around obstacles |
+| Tap / click nearby villagers or objects | Talk, gather, rest, or interact |
+| WASD / arrow keys | Walk; cancels the current walking route |
 | Shift | Run |
 | 1 / 2 / 3 | Ember / Frost / Siphon automatic casting |
 | Tab | Cycle casting stance |
@@ -33,7 +35,7 @@ Start by speaking to **Rowan**, beside the village waypost. **Mara** stands outs
 | P | Download a PNG of the current game view, including visible UI |
 | Escape | Close a menu or pause |
 
-Q/E/F/R can all be reassigned. Click a hotbar ability to prepare or cast it; right-click it to change that slot. Choose a binding in the grimoire, then click a spell. Changing bindings does not reset cooldowns. Menus pause simulation. Sound can be enabled in the pause menu. Walking uses the keyboard; clicking ordinary ground does not move the mage. Basic attacks automatically find nearby threats, use no aether, and pause inside Willowmere. Screenshot files use timestamped names and the browser’s normal download destination; capture happens locally with no upload.
+Q/E/F/R can all be reassigned. Click a hotbar ability to prepare or cast it; right-click it to change that slot. Choose a binding in the grimoire, then click a spell. Changing bindings does not reset cooldowns. Menus pause simulation. Sound can be enabled in the pause menu. Walk with the keyboard or tap/click ground to follow a route around obstacles. Tapping nearby villagers and objects interacts with them; tapping nearby neutral wildlife observes it. Ground taps place an armed spell instead of moving. Basic attacks automatically find nearby threats, use no aether, and pause inside Willowmere. Screenshot files use timestamped names and the browser’s normal download destination; capture happens locally with no upload.
 
 Resting at a Hearthstone restores health and aether outside combat. The market trades three gathered sprigs or twelve amber coins for a tonic. Death returns the player home while preserving discoveries and quest progress.
 
@@ -54,7 +56,7 @@ The world now covers **6000×4200 units**, about **5.8 times** the original area
 
 New communities include ant-supported canopy groves, fog gardens, burrow ridges, Whitebraid growth, frozen larders, Glassbrood pools, cold gardens, burial mounds, Hush terraces and the Bone Orchard. Eight Giftwillow drawings and several forms of each major tree family mix young, old, browsed, twisted, branching and hollow silhouettes. Related trees stay in recognizable groves instead of being randomly mixed across every habitat.
 
-The view is a three-quarter top-down projection with compressed ground depth, rather than a rotating 3D camera or a strict diamond-tile isometric grid. The layout adapts to narrow windows, but the game is designed for a keyboard and mouse; it does not yet have full touch combat controls.
+The view is a three-quarter top-down projection with compressed ground depth, rather than a rotating 3D camera or a strict diamond-tile isometric grid. The layout adapts to narrow windows. Touchscreens use tap-to-move, tap-to-target, nearby interactions and the existing spell and menu buttons, without a visible directional pad.
 
 ## Shared lore
 

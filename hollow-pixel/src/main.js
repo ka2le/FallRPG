@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { UI, shell } from './ui.js';
 import { Soundscape } from './audio.js';
 import { saveScreenshot } from './screenshot.js';
+import { SPECIES } from './data.js';
 
 document.getElementById('app').innerHTML=shell();
 let saved=null,storageAvailable=true;
@@ -49,9 +50,17 @@ window.addEventListener('beforeunload',()=>save());
 canvas.addEventListener('pointermove',e=>{const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);renderer.hover=hit?.id||null;game.pointer=point;canvas.style.cursor=game.aiming?'crosshair':hit?'pointer':'default';});
 canvas.addEventListener('pointerleave',()=>renderer.hover=null);
 canvas.addEventListener('pointerdown',e=>{
-  if(ui.modal)return;canvas.focus();sound.ctx?.resume();const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);
+  if(ui.modal||e.isPrimary===false)return;e.preventDefault();canvas.focus();sound.ctx?.resume();const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);
   game.pointer=point;
-  if(e.button===0){if(game.aiming)game.confirmCast(point);else if(hit)game.chooseTarget(hit.id);}
+  if(e.button===0){
+    if(game.aiming)game.confirmCast(point);
+    else if(hit){game.chooseTarget(hit.id);if(SPECIES[hit.type].neutral&&Math.hypot(hit.x-game.player.x,hit.y-game.player.y)<115)game.observe(hit);}
+    else {
+      const near=game.nearby;
+      if(near&&Math.abs(point.x-near.x)<22&&point.y>near.y-60&&point.y<near.y+18){game.target=null;game.destination=null;game.route=[];game.interact();}
+      else game.navigateTo(point.x,point.y);
+    }
+  }
   if(e.button===2){e.preventDefault();game.cancelCast();}
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());

@@ -10,6 +10,7 @@ import {SPELLS,SPECIES,CAMPS,ACTIONS,CONTROLS,SHIELD} from './data.js';
 import {spellIcon} from './art/spells.js';
 import {MONSTER_ART} from './monsters/index.js';
 import {svgMarkup,restPose} from './monsters/rig.js';
+import {TouchControls} from './touch-controls.js';
 
 const $=s=>document.querySelector(s),game=new Combat();
 const testing=new TestingMode(game);
@@ -35,6 +36,9 @@ let world;
 try{world=new World($('#world'),game);}catch(error){$('#entry .entry-card').innerHTML='<h1>WebGL unavailable</h1><p>Enable hardware acceleration to play.</p>';throw error;}
 let playing=false,started=false,windowed=false,noticeUntil=0,deathUntil=0,hitUntil=0,flash=0,sensitivity=1,soundEnabled=true,audio,returnToPlay=false;
 const keys=new Set(),held=new Set(),barViews=new Map();
+let touchMode=matchMedia('(pointer:coarse)').matches;
+document.addEventListener('pointerdown',e=>{touchMode=e.pointerType==='touch';},true);
+const touch=new TouchControls($('#world'),{enabled:()=>playing,look:(dx,dy)=>look(dx,dy,2)});
 const dock=$('#spell-dock');
 const dockNodes=CONTROLS.map(control=>{
   const s=SPELLS[ACTIONS[control.action]],b=document.createElement('button');b.className='spell-slot';b.style.setProperty('--spell',s.color);
@@ -48,7 +52,7 @@ CAMPS.forEach((c,i)=>{
   b.innerHTML=`<span class="enemies">${[...new Set(c.types)].slice(0,3).map(t=>`<span class="portrait tiny">${portraitOf(t)}</span>`).join('')}${c.types.length>3?`<small>${c.types.length}</small>`:''}</span><span class="name">${c.name} · ${c.level}</span>`;
   b.onclick=()=>{game.travel(i);closeDialogs();resume();};$('#camp-list').append(b);
 });
-function stop(){saveGame();playing=false;keys.clear();held.clear();game.player.moving=false;game.player.vx=game.player.vz=0;document.body.classList.remove('playing');}
+function stop(){saveGame();playing=false;keys.clear();held.clear();touch.reset();game.player.moving=false;game.player.vx=game.player.vz=0;document.body.classList.remove('playing');}
 function closeDialogs(){for(const id of ['book','lab'])if($(`#${id}`).open)$(`#${id}`).close();}
 function openDialog(id,page='spells'){
   if(id==='book')journeyUI.show(page);
@@ -59,7 +63,7 @@ function closeMenu(){closeDialogs();if(returnToPlay)resume();else pause();}
 function startWindowed(){windowed=true;started=true;playing=true;closeDialogs();$('#entry').classList.add('hidden');$('#pause').classList.add('hidden');document.body.classList.add('playing');initAudio();}
 function captureBlocked(){$('#windowed').classList.remove('hidden');$('#pointer-help').hidden=false;pause();}
 async function resume(){
-  closeDialogs();started=true;$('#entry').classList.add('hidden');if(windowed){startWindowed();return;}
+  closeDialogs();started=true;$('#entry').classList.add('hidden');if(windowed||touchMode){startWindowed();return;}
   try{await $('#world').requestPointerLock();}catch{captureBlocked();}
 }
 function pause(){stop();if(started&&!$('#book').open&&!$('#lab').open)$('#pause').classList.remove('hidden');}
@@ -83,7 +87,8 @@ $('#quality').onchange=e=>{const preset={low:[1,32,150],balanced:[1.5,55,220],hi
 $('#perf').onchange=e=>$('#performance').hidden=!e.target.checked;
 let showNumbers=true;$('#numbers').onchange=e=>showNumbers=e.target.checked;
 $('#testing-mode').onchange=e=>{testing.setEnabled(e.target.checked);$('#testing-controls').hidden=!testing.enabled;notice(testing.enabled?'Testing · G to fly · Shift to accelerate':'Testing off');};
-function movement(){return {x:Number(keys.has('KeyD'))-Number(keys.has('KeyA')),z:Number(keys.has('KeyS'))-Number(keys.has('KeyW'))};}
+function movement(){return {x:Math.max(-1,Math.min(1,Number(keys.has('KeyD'))-Number(keys.has('KeyA'))+touch.movement.x)),z:Math.max(-1,Math.min(1,Number(keys.has('KeyS'))-Number(keys.has('KeyW'))+touch.movement.z))};}
+function look(dx,dy,scale=1){game.player.yaw-=dx*.0018*sensitivity*scale;game.player.pitch=Math.max(-1.4,Math.min(1.4,game.player.pitch-dy*.0018*sensitivity*scale));}
 function pressAction(action){if(action==='attack')held.add(action);game.use(action,movement());}
 const abilityKeys={KeyQ:'shockwave',KeyE:'frostburst',KeyR:'drain',KeyF:'blink',KeyJ:'attack',KeyK:'bind',KeyL:'shield',Digit1:'companion',Digit2:'haste',Digit3:'renew',Digit4:'recall'};
 document.addEventListener('keydown',e=>{
@@ -96,7 +101,7 @@ document.addEventListener('keydown',e=>{
   if(!e.repeat){if(e.code==='KeyG'&&testing.enabled)notice(testing.toggleFlight()?'Flight · Space ↑ · Ctrl ↓':'On foot');else if(e.code==='Space'&&!testing.flying)game.jump();else if(abilityKeys[e.code])pressAction(abilityKeys[e.code]);}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='KeyJ')held.delete('attack');});
-document.addEventListener('mousemove',e=>{if(!playing)return;game.player.yaw-=e.movementX*.0018*sensitivity;game.player.pitch=Math.max(-1.4,Math.min(1.4,game.player.pitch-e.movementY*.0018*sensitivity));});
+document.addEventListener('mousemove',e=>{if(!playing||e.sourceCapabilities?.firesTouchEvents)return;look(e.movementX,e.movementY);});
 document.addEventListener('contextmenu',e=>{if(playing)e.preventDefault();});
 const mouseButtons={0:'attack',2:'bind',4:'shield'};
 document.addEventListener('mousedown',e=>{if(!playing||e.target.closest('button,input,dialog'))return;if(e.button>=2)e.preventDefault();const action=mouseButtons[e.button];if(action){e.preventDefault();pressAction(action);}});

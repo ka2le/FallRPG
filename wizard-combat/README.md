@@ -34,6 +34,8 @@ Opening route: First embers, Bind, Briar track, Shield, Watchstones, Frostburst,
 
 WASD move, Shift sprint, Space jump. Tab/B spellbook, I inventory, V journal, M map, N bestiary, T settings, Esc pause. Only learned spells appear on the combat HUD. Number keys 5–9 are reserved for future utility spells.
 
+On touchscreens, drag anywhere in the bottom third for an invisible floating movement joystick, and swipe the upper two thirds to look. Use two fingers to move and look together; existing spell and menu buttons remain tappable. Touch play starts without mouse capture.
+
 **Testing mode:** enable in Settings (T). G toggles free flight; WASD follows your aim, Space ascends and Ctrl descends. Shift accelerates to 140m/s in flight or 80m/s on foot. Turning flight off lands on terrain or cover below. Testing mode is session-only and resets on reload; ordinary game progress still saves.
 
 Bind acquires a visible target within a forgiving forward cone, then steers a physical projectile. Cover breaks tracking and blocks it. Firebolt and enemy shots remain straight. Shield interception occurs on the visible ellipse 1.8m ahead. Area spells respect solid cover.

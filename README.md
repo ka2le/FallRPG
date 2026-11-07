@@ -9,7 +9,7 @@ Both games have a **Choose another game** link in their pause menu. Each uses a 
 
 **[Play FallRPG in your browser](https://ka2le.github.io/FallRPG/)** · [Source on GitHub](https://github.com/ka2le/FallRPG)
 
-The game is designed for desktop browsers with a keyboard, mouse and WebGL. Progress saves in the current browser.
+Both games support desktop and touch controls. The 3D game uses an invisible movement joystick in the bottom third and swipe-to-look above; the pixel game uses tap-to-move. The 3D game requires WebGL. Progress saves in the current browser.
 
 ```powershell
 cd wizard-combat

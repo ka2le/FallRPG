@@ -95,7 +95,7 @@ export class Game {
   buyTonic(mode){const p=this.player;if(mode==='herbs'&&p.herbs>=3){p.herbs-=3;p.tonics++;this.dirty=true;this.toast('Three sprigs for one fresh tonic.');return true;}if(mode==='coins'&&p.coins>=12){p.coins-=12;p.tonics++;this.dirty=true;this.toast('One tonic, wrapped for the road.');return true;}this.toast(mode==='herbs'?'You need three sprigs.':'You need 12 amber coins.');return false;}
   navigateTo(x,y){
     if(!canWalk(this.world,x,y)){this.toast('That ground is not passable.');return;}
-    this.autoAttack=false;const cell=20,start={x:Math.round(this.player.x/cell),y:Math.round(this.player.y/cell)},goal={x:Math.round(x/cell),y:Math.round(y/cell)};
+    const cell=20,start={x:Math.round(this.player.x/cell),y:Math.round(this.player.y/cell)},goal={x:Math.round(x/cell),y:Math.round(y/cell)};
     const key=n=>`${n.x},${n.y}`,open=[{...start,g:0,f:0}],cost=new Map([[key(start),0]]),from=new Map(),closed=new Set();let found=null;
     for(let count=0;open.length&&count<7000;count++){
       open.sort((a,b)=>a.f-b.f);const cur=open.shift(),ck=key(cur);if(closed.has(ck))continue;closed.add(ck);
