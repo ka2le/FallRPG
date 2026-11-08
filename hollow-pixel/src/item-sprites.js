@@ -25,7 +25,8 @@ export const ITEM_SPRITES={
  ...Object.fromEntries(GEAR_SPRITE_IDS.map((id,index)=>[id,{sheet:'items-gear-v1',index,...(index>=50?{name:equipmentNames[index-50],category:'Future equipment'}:{})}])),
  ...Object.fromEntries(supplyRows.flatMap(([category,names],row)=>names.map((name,col)=>[key(name),{sheet:'items-supplies-v1',index:row*8+col,name,category}]))),
 };
-export const spriteStyle=cell=>`--item-sheet:url('./assets/${cell.sheet}.png');--item-x:${cell.index%8*100/7}%;--item-y:${Math.floor(cell.index/8)*100/7}%`;
+// CSS variables can resolve relative URLs against the built stylesheet's folder.
+export const spriteStyle=cell=>`--item-sheet:url('${new URL(`./assets/${cell.sheet}.png`,document.baseURI).href}');--item-x:${cell.index%8*100/7}%;--item-y:${Math.floor(cell.index/8)*100/7}%`;
 export function spriteRect(width,height,index){const col=index%8,row=Math.floor(index/8),x=Math.round(col*width/8),y=Math.round(row*height/8);return {x,y,width:Math.round((col+1)*width/8)-x,height:Math.round((row+1)*height/8)-y};}
 export function pixelItem(id,cls=''){
  const cell=ITEM_SPRITES[id];if(!cell)return '';
