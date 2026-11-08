@@ -25,7 +25,7 @@ test('all authored camps spawn in full, follow clear paths and have fixed threat
   const g=new Game();for(const camp of ENCOUNTERS){const enemies=g.creatures.filter(c=>c.camp===camp.id);assert.equal(enemies.length,camp.types.length,camp.id);assert.ok(enemies.every(c=>c.level===camp.level));assert.ok(enemies.every(c=>canWalk(g.world,c.x,c.y,8)));}
   const staticTerrain={...g.world,rootwallLive:false};
   for(const path of ADVENTURE_PATHS)for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],d=dist(a,b);for(let n=0;n<=d;n+=8)assert.ok(canWalk(staticTerrain,a.x+(b.x-a.x)*n/d,a.y+(b.y-a.y)*n/d,8),`${a.x},${a.y} → ${b.x},${b.y} at ${n}`);}
-  const early=g.creatures.find(c=>c.quest==='herd'),late=g.creatures.find(c=>c.camp==='last-lantern'&&c.elite);assert.ok(late.damage>early.damage*5);assert.ok(late.maxHp>early.maxHp*8);g.player.level=12;g.recalculate();assert.equal(late.level,12);assert.equal(early.level,1,'monsters do not scale to the player');
+  const early=g.creatures.find(c=>c.quest==='herd'),late=g.creatures.find(c=>c.camp==='last-lantern'&&c.elite);assert.ok(late.damage>early.damage*5);assert.ok(late.maxHp>early.maxHp*5);g.player.level=12;g.recalculate();assert.equal(late.level,12);assert.equal(early.level,1,'monsters do not scale to the player');
 });
 test('an entire bounty chain has reachable rewards without requiring repeated turn-ins',()=>{
   const g=new Game();pasture(g);for(const h of HUNTS.filter(h=>!h.id.startsWith('road-'))){assert.ok(g.questAction(h.id),h.id);for(const c of g.creatures.filter(c=>h.camps.some(camp=>camp.id===c.camp)))g.hurt(c,99999);assert.ok(g.questAction(h.id));g.equip(h.item);}

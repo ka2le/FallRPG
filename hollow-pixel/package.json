@@ -15,7 +15,8 @@
     "balance:background": "node scripts/start-balance.mjs",
     "balance:kiting": "node scripts/check-kiting.mjs",
     "balance:exploits": "node scripts/exploit-audit.mjs",
-    "balance:opening": "node scripts/check-opening.mjs"
+    "balance:opening": "node scripts/check-opening.mjs",
+    "balance:progression": "node scripts/check-progression.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

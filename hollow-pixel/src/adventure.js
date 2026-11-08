@@ -85,6 +85,8 @@ export function dangerAt(x,y){
 }
 export function creatureStats(c,s){
   const level=c.level||dangerAt(c.homeX,c.homeY).level,elite=!!c.elite;
-  const pressure=!s.neutral&&c.type!=='seedling'?(level<=3?.75:level<=6?.88:1):1;
-  return {level,maxHp:Math.round(s.hp*(1+(level-1)*.24)*(elite?1.65:1)),damage:Math.round(s.damage*pressure*(s.ranged?.8:1)*(1+(level-1)*.27)*(elite?1.25:1)),xp:Math.round((20+(level-1)*7)*(elite?2:1)),coins:3+level*(elite?3:1)};
+  const hostile=!s.neutral,body=!hostile||s.rootwall?1:c.type==='seedling'?.9:.75;
+  const pressure=!hostile?1:c.type==='seedling'?.75:level<=3?.6:level<=6?.72:.85;
+  return {level,maxHp:Math.round(s.hp*body*(1+(level-1)*(hostile&&!s.rootwall?.16:.24))*(elite?(hostile?1.45:1.65):1)),damage:Math.max(1,Math.round(s.damage*pressure*(s.ranged?.8:1)*(1+(level-1)*(hostile?.14:.27))*(elite?(hostile?1.15:1.25):1))),xp:Math.round((20+(level-1)*7)*(elite?2:1)),coins:3+level*(elite?3:1)};
 }
+export function legacyCreatureMaxHp(c,s){return Math.round(s.hp*(1+((c.level||1)-1)*.24)*(c.elite?1.65:1));}

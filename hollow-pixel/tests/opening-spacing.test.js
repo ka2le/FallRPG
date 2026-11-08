@@ -23,7 +23,7 @@ test('small Seedlings share the easiest attack tempo and damage, beyond the intr
   const herd=enemyPressure({type:'seedling',quest:'herd',level:1},SPECIES.seedling,1),wild=enemyPressure({type:'seedling',level:1},SPECIES.seedling,1);
   assert.ok(herd.speed>80&&herd.speed<112);assert.equal(herd.recovery,1.15);assert.equal(herd.windup,wild.windup);assert.ok(wild.speed>=120);
   const g=fieldGame([{type:'seedling',quest:'herd',x:3150,y:3000},{type:'seedling',x:3300,y:3000}],{x:3000,y:3000});
-  assert.equal(g.creatures[0].maxHp,g.creatures[1].maxHp);assert.equal(g.creatures[0].damage,4);assert.equal(g.creatures[1].damage,4);
+  assert.equal(g.creatures[0].maxHp,g.creatures[1].maxHp);assert.equal(g.creatures[0].damage,3);assert.equal(g.creatures[1].damage,3);
 });
 
 test('standing inside either side or the centre of the pasture never pulls stronger camps into its three-sapling fight',()=>{

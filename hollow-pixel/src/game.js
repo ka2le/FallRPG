@@ -11,7 +11,7 @@ import { spreadCombatants } from './crowd.js';
 import { OPENING_LAYOUT_VERSION } from './opening.js';
 import { effectiveSpell, SPELL_UPGRADES } from './spell-effects.js';
 import { attachRootwalls,updateRootwalls,saveRootwalls,restoreRootwalls } from './rootwalls.js';
-import { GEAR, LESSONS, HUNTS, ENCOUNTERS, creatureStats } from './adventure.js';
+import { GEAR, LESSONS, HUNTS, ENCOUNTERS, creatureStats, legacyCreatureMaxHp } from './adventure.js';
 import { createWorld, HOME, MIN_X, MIN_Y, MAX_X, MAX_Y, biomeAt, seamX, dist, clamp, canWalk, moveBody, lineClear, inVillage, propsNear } from './world.js';
 
 export const SAVE_KEY='hollow-between-seasons-v1';
@@ -283,7 +283,7 @@ export class Game {
     c.state=c.type==='mantleback'?'turning leaf litter':c.type==='snowkeel'?'feeding beneath snow':c.type==='antler'?'tending antler gardens':cycle<6?'resting':'wandering';
     if(cycle>6){const goal={x:c.homeX+Math.sin(this.time*.06+c.phase)*65,y:c.homeY+Math.cos(this.time*.047+c.phase)*45};if(s.neutral&&c.type!=='scavenger'&&biomeAt(goal.x,goal.y)!==s.habitat)return;this.walkCreature(c,goal,dt,s.speed*.43);}
   }
-  snapshot(){const p=this.player;return {version:1,equipmentVersion:1,worldLayout:2,openingLayout:OPENING_LAYOUT_VERSION,combatVersion:3,rpgVersion:PROGRESSION_VERSION,time:this.time,attributes:{...this.attributes},spellUpgrades:[...this.spellUpgrades],skillCredit:this.skillCredit,autoSurge:this.autoSurge,cooldowns:{...this.cooldowns},boltCooldown:this.boltCooldown,enemyStates:this.creatures.filter(c=>!c.dead&&(c.hp<c.maxHp||c.aggro||c.returning||c.provoked)).map(c=>({id:c.id,x:c.x,y:c.y,hp:c.hp,aggro:!!c.aggro,returning:!!c.returning,provoked:!!c.provoked,root:Math.max(0,c.root),stun:Math.max(0,c.stun),slow:Math.max(0,c.slow),attack:Math.max(0,c.attack),windup:Math.max(0,c.windup),pursuitTime:Math.max(0,c.pursuitTime||0),anchor:c.aggroAnchor?{...c.aggroAnchor}:null})),respawns:this.creatures.filter(c=>c.dead).map(c=>({id:c.id,deadAt:c.deadAt,respawnAt:c.respawnAt,returnedHome:c.returnedHome})),rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
+  snapshot(){const p=this.player;return {version:1,equipmentVersion:1,worldLayout:2,openingLayout:OPENING_LAYOUT_VERSION,combatVersion:4,rpgVersion:PROGRESSION_VERSION,time:this.time,attributes:{...this.attributes},spellUpgrades:[...this.spellUpgrades],skillCredit:this.skillCredit,autoSurge:this.autoSurge,cooldowns:{...this.cooldowns},boltCooldown:this.boltCooldown,enemyStates:this.creatures.filter(c=>!c.dead&&(c.hp<c.maxHp||c.aggro||c.returning||c.provoked)).map(c=>({id:c.id,x:c.x,y:c.y,hp:c.hp,maxHp:c.maxHp,aggro:!!c.aggro,returning:!!c.returning,provoked:!!c.provoked,root:Math.max(0,c.root),stun:Math.max(0,c.stun),slow:Math.max(0,c.slow),attack:Math.max(0,c.attack),windup:Math.max(0,c.windup),pursuitTime:Math.max(0,c.pursuitTime||0),anchor:c.aggroAnchor?{...c.aggroAnchor}:null})),respawns:this.creatures.filter(c=>c.dead).map(c=>({id:c.id,deadAt:c.deadAt,respawnAt:c.respawnAt,returnedHome:c.returnedHome})),rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
   restore(s){
     if(s?.version!==1)return;const p=this.player,d=s.player||{};
     for(const key of ['level','xp','tonics','herbs','coins'])if(Number.isFinite(d[key]))p[key]=clamp(Math.floor(d[key]),key==='level'?1:0,key==='level'?50:9999);
@@ -340,7 +340,10 @@ export class Game {
       const relocated=openingMoved&&(c.openingArea||c.rootwall==='briar-march');
       const home={x:c.homeX,y:c.homeY},pressure=enemyPressure(c,SPECIES[c.type],p.level);
       if(!relocated&&Number.isFinite(state.x)&&Number.isFinite(state.y)&&dist(state,home)<=pressure.homeLeash+600&&canWalk(this.world,state.x,state.y,c.solid||5,c)){c.x=state.x;c.y=state.y;}
-      if(Number.isFinite(state.hp))c.hp=clamp(state.hp,1,c.maxHp);
+      if(Number.isFinite(state.hp)){
+        const before=Number.isFinite(state.maxHp)&&state.maxHp>0?state.maxHp:s.combatVersion<4?legacyCreatureMaxHp(c,SPECIES[c.type]):c.maxHp;
+        c.hp=clamp(before===c.maxHp?state.hp:state.hp*c.maxHp/before,1,c.maxHp);
+      }
       for(const field of ['root','stun','slow','attack','windup','pursuitTime'])if(Number.isFinite(state[field]))c[field]=clamp(state[field],0,120);
       c.returning=state.returning===true;c.aggro=state.aggro===true&&!c.returning;c.provoked=!!SPECIES[c.type].rootwall&&state.provoked===true&&!c.returning;
       c.aggroAnchor=Number.isFinite(state.anchor?.x)&&Number.isFinite(state.anchor?.y)&&dist(state.anchor,home)<=pressure.homeLeash+GROUP_AGGRO_RADIUS+1?{x:state.anchor.x,y:state.anchor.y}:null;

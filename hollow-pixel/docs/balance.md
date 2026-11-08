@@ -2,8 +2,9 @@
 
 The goal is a dangerous world with manageable routes from Willowmere, earned
 growth, and useful retreats. Monster levels stay fixed. Initial danger comes
-primarily from movement, awareness, range and attack frequency; monster health
-is unchanged. Ranged projectile damage is reduced by 20% to compensate for rapid, coordinated volleys.
+from movement, awareness, range and attack frequency. Pursuit and attack behavior
+are unchanged in the current tuning pass. Lower health and damage, plus meaningful
+level growth, make early fights approachable and re-clears easier.
 
 ## Current spell path
 
@@ -13,13 +14,13 @@ slots 1–4. Slots 8 and 9 start empty. Bindings share spell recovery times.
 
 | Slot | Spell | Learn at | Aether | Base effect |
 |---|---|---|---:|---|
-| 1 | Aether Lance | Pasture reward, normally level 2 | 38 | Next automatic shot deals 56 damage, replacing its ordinary damage |
-| 2 | Willow Ward | Level 3, 22 amber | 26 | 45 absorption for 7 seconds |
-| 3 | Wildbloom | Level 5, 40 amber | 48 | 56 damage within 112 units of the player; 1-second base stagger |
-| 4 | Windrun | Level 7, 40 amber | 32 | +75% movement for 4 seconds |
-| 5 | Briarbind | Level 9, 65 amber | 42 | Next basic shot spreads a 105-unit root from its victim; 4.5 seconds |
-| 6 | Lantern Fox | Level 11, 95 amber | 65 | One companion, 18 seconds, 7 base bite damage every 1.2 seconds |
-| 7 | Verdant Oath | Level 7 after Windrun, 50 amber | 44 | 48 healing over 6 seconds |
+| 1 | Aether Lance | Level 2, 1 skill point | 38 | Next automatic shot deals 56 damage, replacing its ordinary damage |
+| 2 | Willow Ward | Level 3, 1 skill point | 26 | 45 absorption for 7 seconds |
+| 3 | Wildbloom | Level 5, 1 skill point | 48 | 56 damage within 112 units of the player; 1-second base stagger |
+| 4 | Windrun | Level 7, 1 skill point | 32 | +75% movement for 4 seconds |
+| 5 | Briarbind | Level 9, 1 skill point | 42 | Next basic shot spreads a 105-unit root from its victim; 4.5 seconds |
+| 6 | Lantern Fox | Level 11, 1 skill point | 65 | One companion, 18 seconds, 7 base bite damage every 1.2 seconds |
+| 7 | Verdant Oath | Level 7 after Windrun, 1 skill point | 44 | 48 healing over 6 seconds |
 
 Each main lesson requires the preceding main lesson. Healing branches from
 Windrun. Buying a later lesson cannot skip the earlier tools. Lance and Briarbind
@@ -30,11 +31,11 @@ Shields and healing refresh; summons replace the existing companion. None stack
 with themselves. Area attacks and the companion protect peaceful wildlife.
 
 Active recovery times are 1.1–1.5 seconds. Mana starts at 100; combat recovery is
-2.2/second, with another 1.8 outside combat. A first-level pool holds two Lances,
+4/second, with another 2 outside combat. A first-level pool holds two Lances,
 three wards, or one Wildbloom and two wards. These compete for the
 same pool. Grimoire's automatic Lance option fills unaffordable shots with free
 sparks. Sustaining every Lance needs roughly 34.5 aether/second, which a fully
-focused recovery build reaches around level 30 before equipment. This is also
+focused Mana build reaches around level 30 before equipment. This is also
 covered by a sustained firing test.
 
 The old wall, targeted frost and bell areas, siphon, blink, and alternate casting
@@ -42,19 +43,83 @@ style definitions remain in code and retain regression coverage. They are absent
 from the current lessons and grimoire. Old saves migrate to the new spell path;
 earned equipment, amber, exploration and completed bounties remain.
 
+## Current easier progression calibration (combat v4)
+
+Early Rootknives have 48 health (previously 64), and Petalmaws have 36 (48).
+Other ordinary hostile bodies use 75% of the former base health; Seedlings use
+90%. Hostile health grows by 16% of base per enemy level rather than 24%.
+Elite multipliers are 1.45 health and 1.15 damage instead of 1.65 and 1.25.
+Neutral wildlife and rooted wall recovery retain their behavior. No pursuit,
+awareness, range, firing cadence, spacing, group aggro or return rules changed.
+Wounded saved enemies retain their health fraction when the new balance loads.
+
+The new low-input test supplies no armour, purchased gear, kiting, shields or
+arena consumables. It compares level 1, 3 and 5 with the same early enemies,
+using only the first earned wand at levels 2+. The full-world road starts fresh,
+collects the real pasture reward and clears all three Briar camps before returning.
+
+Run `2026-11-08T13-43-46-670Z` completed **1158/1158 paired probes** in 67.2 seconds:
+1152 arena records and six fresh-world routes. The old balance killed all three
+builds before finishing the first road. The new balance cleared it with Power,
+Mana and spell-focused builds, zero deaths, and zero / one / zero tonics. By level
+three the same sapling pack took about one-third less time and 44% less damage
+using basic attacks. A lone first-level Rootknife averaged 14 damage taken,
+and an orchid 10, without skills or supplies. The level-five Lance policy cleared
+the harder hunter trio in every fixture; stationary basic attacks still lost.
+
+These are eight paired orientation seeds and one deterministic road per build,
+not human difficulty estimates. All outcomes, failures and source snapshots are
+in [the reviewed comparison](progression-review.md).
+A fresh-seed follow-up completed 576 broader arenas and three ten-minute
+full-world expeditions. Power / Mana / spell focus each cleared 15 named camps,
+completed the Canopy bounty and reached levels 17 / 18 / 17 with 2 / 1 / 0 deaths.
+All ended at the time cap; none completed the whole wilderness. See the
+[full analysis](progression-review.md).
+Final validation: 167 gameplay tests, 27 browser scenarios, build, 98 opening
+checks and 236 group/tree/return/resource probes passed.
+
+Reproduce a fresh current run with `npm run balance:progression -- --start-seed 241001`.
+Earlier reports below describe their historical curves.
+
 ## Growth and retreat
 
-Every level grants three growth points in Pack (I). A power point adds 2.5% basic
-and spell damage; 65% of the accumulated extra power also increases utility
-durations. A capacity point adds 7 maximum aether. A recovery point adds 0.38
-aether/second. Each free level adds only 1.2% power and four health. Level-ups
+Every level grants **two skill points**, shared between Power, Mana, spell unlocks
+and spell focus. A Power point adds 5% basic and spell damage; 65% of accumulated
+extra power also increases utility durations. Power strengthens shield absorption
+too. A single Mana point adds **8 maximum mana and 0.65 mana/second** together.
+The first five level-ups add 6% innate power each; later levels add 3%. Every
+level adds eight maximum health, even when points buy Mana or spells. Level-ups
 restore eight health but do not refill mana. Early weapon bonuses are modest;
 the reed gives 10% power and one basic damage instead of 25% and three damage.
 
+Health regenerates slowly: **0.5/second in combat, 1.2/second outside combat**.
+Neither buying skills nor increasing maximum mana refills the current pool.
+The Character interface has **Items / Spells / Stats** tabs. Staged stat points
+are reserved when buying a spell in another tab. Unlearned spells have no hotbar
+icons; learning grows the bar. Spell metrics, key selection and focus purchases
+have dedicated controls. No lesson costs amber or requires returning to town.
+
+Every spell has one optional **1-point focus**, with no repeat purchases:
+
+| Spell | Focus |
+|---|---|
+| Lance | +50% damage and a 1.5-second slow |
+| Ward | +60% absorption and +40% duration |
+| Wildbloom | +45% damage, +25% radius and longer stagger |
+| Windrun | +2 base seconds, speed multiplier 2.05 instead of 1.75 |
+| Briarbind | +2 base seconds and +35% spread |
+| Fox | +50% bite damage and +6 base seconds |
+| Verdant Oath | +65% healing, delivered over 4 seconds |
+
+These compete with global Power and Mana. Existing v2 saves keep earned spells,
+equipment and world progress; old split-stat allocations are refunded into the
+new two-point budget after charging for retained spells. Legacy spell credit
+preserves rare older saves with more earned lessons than that budget can cover.
+
 Hostile melee fighters notice at 240 units. Seedlings chase at 120 units/second,
-ordinary hunters at 126 or more, Prowlers at 135, and dedicated chasers at 143.
-The approach rush lasts 1.2 seconds at 150 units/second, with a small level-gap
-bonus. Player walk/run speeds are 80/112 before equipment. A lone opening enemy
+early hunters at 114–116, early Prowlers at 125, and dedicated chasers at 143.
+Early non-sapling rushes last 0.8 seconds at 132; later hunters approach at 150
+for 1.2 seconds, with a small level-gap bonus. Player walk/run speeds are 80/112 before equipment. A lone opening enemy
 may die cleanly; pressure comes from surviving pack members, not extreme speed.
 Short melee reach, windups and territorial escapes remain.
 
@@ -65,21 +130,25 @@ excluded. Calls never relay through a chain across the forest. Packs share a
 fixed territory anchor, so rear members can follow the front without abandoning
 the encounter early.
 
-Ranged monsters notice at 360, attack at 330, and fire 340-unit/second projectiles.
-Their 0.22-second windup and 0.48-second recovery preserve firing pressure, but
-per-projectile damage is 20% lighter now that groups engage together.
+Early ranged monsters notice at 280, attack at 260 and fire 300-unit/second
+projectiles with 0.3-second warnings and 0.8-second recovery. The introductory
+orchid has a shorter 215 reach. Later ranged enemies reach 330 and recover in
+0.48 seconds. Early ranged enemies respond promptly on first sight, preserving
+pressure while reducing sustained volleys. Non-sapling hostile damage uses multipliers of 0.60 through level 3, 0.72
+through level 6 and 0.85 later; ranged damage also retains its 20% reduction.
+Hostile damage grows by 14% of base per enemy level instead of 27%.
 They route around obstructing scenery to regain a clear firing line. Cover buys
 time, but a trunk cannot permanently freeze an enemy inside its attack range.
 Firing checks use the projectile's actual launch position.
 
-Small Seedlings are the easiest hostile type: 40 base health, 5 base damage,
+Small Seedlings are the easiest hostile type: 36 health and 3 damage at level one,
 0.45-second warnings and 1.15-second recovery between attacks. These lower
 damage/tempo values apply to ordinary Seedlings as well as the quest group.
 The pasture group pursues at 104, approaches at 116 for 0.55 seconds and notices
 at 160. Its 120-unit group call still rallies all three. Wilderness Seedlings
 retain their 120-unit pursuit and longer awareness, but share the gentler
 damage and attack cadence. Three level-one saplings should be a comfortable
-basic-attack fight; five together should demand powerful spells or a retreat.
+basic-attack fight; mana should substantially improve the outcome against five.
 
 The pasture now lies farther north at (970,245), approached along a clear path
 at (970,425). The neighboring Briar camps, orchid, grazing pair, Giftwillows and
@@ -147,7 +216,7 @@ npm run balance:background -- --seeds 12 --campaign-seeds 1 --start-seed 3001
 npm run balance -- --seeds 12 --campaign-seeds 1 --campaign-seconds 1800 --max-wall-seconds 1000 --start-seed 3001
 
 # Restrict the slower campaign portion while keeping all arena comparisons
-npm run balance -- --seeds 12 --campaign-seeds 1 --campaign-builds balanced,recovery --campaign-seconds 1800 --max-wall-seconds 650 --start-seed 4001
+npm run balance -- --seeds 12 --campaign-seeds 1 --campaign-builds balanced,mana --campaign-seconds 1800 --max-wall-seconds 650 --start-seed 4001
 
 # Direct-retreat and bounded group/tree/return/cover/resource abuse probes
 npm run balance:kiting -- --start-seed 61001
@@ -169,8 +238,9 @@ earned equipment, haven services, and visits the relevant bounty givers.
 The policy uses nearby visible threats, current health/mana and collision. It
 can choose targets, kite, cast, use limited tonics, retreat, learn and equip. Its
 baseline stands still with the same growth and equipment, free basic attacks,
-and no spells or tonics. Four builds emphasize power, capacity, recovery, or a
-balanced distribution; specialist policies still put some points in other needs.
+and no spells or tonics. Four builds emphasize Power, Mana, spell breadth/focus,
+or a balanced distribution, all spending the same two-point budget. Specialist
+policies still put some points in other needs.
 It is a rule-based balance probe, with no neural training or model dependency.
 
 Each invocation creates a separate `artifacts/balance/<UTC timestamp>/` with:
@@ -183,6 +253,7 @@ Each invocation creates a separate `artifacts/balance/<UTC timestamp>/` with:
   navigation stalls independently of combat strength.
 - `summary.json` and `report.md`: build comparisons, resource use and expedition
   milestones. A stopped or failed run is marked explicitly.
+- `source/`: an immutable copy of the simulation's JavaScript source.
 
 Use a fresh seed range after tuning. Do not pool runs with different source
 hashes or rerun saved losses as replacement outcomes. A `STOP` file in the output
@@ -205,6 +276,32 @@ separately. A bot can fail because of navigation or resource allocation. Small
 samples do not establish a human difficulty rating or that builds are equally
 strong. Campaigns may finish at their time/death/wall cap before the final road;
 those are measured outcomes, not successful playthroughs.
+
+## Shared skill calibration (v7)
+
+Run `2026-11-08T12-35-01-888Z` completed 868/868 episodes in 328.3 seconds:
+864 paired arenas and four ten-minute full-world expeditions. All 864 arena
+records use legal two-point budgets, including spell unlocks and focus purchases.
+Power, Mana, spell-focused and balanced profiles each cleared 108/108 tactical
+arenas. Basic-only policies cleared the four early scenarios and lost against
+later packs. This supports distinct usable routes through these fixtures; it
+is not a human difficulty estimate or proof of equal build strength.
+
+Full-world runs reached levels 12, 11, 11 and 10, clearing 11, 11, 10 and 9 named
+camps, with 9, 8, 8 and 6 deaths. Every expedition ended at its time cap; none
+completed the wilderness. Actual travel remains more dangerous than open arenas.
+
+The opening audit passed 98/98 probes. The actual three-sapling quest inflicted
+32 raw damage and left 91.8 health after passive recovery, with no spells,
+tonics or outside aggro. Group, retreat, tree, cover and resource probes passed
+236/236. The isolated Mana control sustained Lance on every shot at level 30;
+its level-3 counterpart still used basic fillers for 80% of attacks.
+
+See [the reviewed record](../artifacts/balance/2026-11-08T12-35-01-888Z/skills-review.md)
+for fixtures, limits, retained failures and source audit. A concurrent item-sprite
+URL fix changed only a rendering helper during collection; combat sources match
+the archived hashes. Reports below describe earlier mechanics and are retained
+as history, rather than results for the current shared skill system.
 
 ## Earlier calibration — before the direct-retreat correction
 

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile, appendFile, access, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { Game } from '../src/game.js';
 import { SPECIES } from '../src/data.js';
@@ -18,7 +18,8 @@ await mkdir(out,{recursive:true});
 // All outputs are run-owned. Existing records cannot be overwritten/resumed.
 const raw=resolve(out,'episodes.jsonl');await writeFile(raw,'',{flag:'wx'});
 const sourceFiles=[...(await readdir(resolve('src'))).filter(f=>f.endsWith('.js')).sort().map(f=>`src/${f}`),'scripts/balance.mjs'];
-const sources={};for(const file of sourceFiles)sources[file]=createHash('sha256').update(await readFile(file)).digest('hex');
+const sources={};for(const file of sourceFiles){const data=await readFile(file);sources[file]=createHash('sha256').update(data).digest('hex');const target=resolve(out,'source',file);await mkdir(dirname(target),{recursive:true});await writeFile(target,data,{flag:'wx'});}
+await writeFile(resolve(out,'source/package.json'),'{"private":true,"type":"module"}',{flag:'wx'});
 const scenarios=[
   {id:'lone-seedling',player:1,level:1,types:['seedling']},
   {id:'pasture-cluster',player:1,level:1,types:['seedling','seedling','seedling']},
@@ -60,7 +61,7 @@ function fight(scenario,seed,build,policy){
   const g=arena(scenario,seed);loadout(g,build);const bot=new BalanceBot(g,{seed,build,policy}),{record,tick}=meter(g);
   let result='timeout';
   while(g.time<90){g.update(dt,bot.decide());tick();if(record.deaths){result='death';break;}if(g.creatures.every(c=>c.dead)){result='clear';break;}if(g.time>10&&g.creatures.every(c=>!c.aggro)&&g.creatures.some(c=>c.returning)){result='disengaged';break;}}
-  return {kind:'arena',scenario:scenario.id,seed,build,policy,result,seconds:g.time,level:g.player.level,endHp:g.player.hp,endMana:g.player.mana,maxHp:g.player.maxHp,maxMana:g.player.maxMana,attributes:g.attributes,equipment:{...g.equipment},learned:[...g.learned],...record};
+  return {kind:'arena',scenario:scenario.id,seed,build,policy,result,seconds:g.time,level:g.player.level,endHp:g.player.hp,endMana:g.player.mana,maxHp:g.player.maxHp,maxMana:g.player.maxMana,attributes:g.attributes,equipment:{...g.equipment},learned:[...g.learned],spellUpgrades:[...g.spellUpgrades],unspentPoints:g.unspentPoints,...record};
 }
 
 async function campaign(seed,build){
