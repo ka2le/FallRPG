@@ -7,6 +7,7 @@ import { WORLD_SIZE, WORLD_BOUNDS, CORE_SIZE, FRONTIER_CAMPS, FRONTIER_PATHS, fr
 import { populateFrontier } from './frontier-world.js';
 import { frontierLandscapeAt, landscapePoolAt } from './frontier-landscape.js';
 import { plantRootwalls } from './rootwall-layout.js';
+import { PASTURE, PASTURE_SEEDLINGS, inOpeningRunway, inBriarRoad } from './opening.js';
 
 export const WIDTH=WORLD_SIZE.width, HEIGHT=WORLD_SIZE.height;
 export const {minX:MIN_X,minY:MIN_Y,maxX:MAX_X,maxY:MAX_Y}=WORLD_BOUNDS;
@@ -36,7 +37,7 @@ export function biomeAt(x,y){
 }
 const LEGACY_PATHS=[
   [{x:260,y:790},{x:580,y:850},{x:880,y:850},HOME,{x:1460,y:870},{x:2020,y:820}],
-  [HOME,{x:980,y:690},{x:810,y:565},{x:770,y:340}],
+  [HOME,{x:980,y:690},PASTURE.approach,PASTURE,{x:880,y:170}],
   [HOME,{x:1210,y:1040},{x:1280,y:1220},{x:1275,y:1370},{x:1610,y:1430},{x:1845,y:1320}],
   [{x:1210,y:1040},{x:980,y:1170},{x:710,y:1405},{x:420,y:1460}],
   [{x:1460,y:870},{x:1570,y:640},{x:1810,y:415}],
@@ -89,8 +90,8 @@ export function createWorld(){
   add(4,1360,835,113,{solid:28,building:true});
   add(7,1080,965,88,{solid:18,label:'Hearthstone'});
   add(15,1080,795,48);
-  add(0,815,510,126,{solid:16,tree:true,label:'Giftwillow'});
-  add(0,880,575,112,{solid:15,tree:true,label:'Giftwillow'});
+  add(0,815,190,126,{solid:16,tree:true,label:'Giftwillow'});
+  add(0,880,255,112,{solid:15,tree:true,label:'Giftwillow'});
   add(8,750,680,116,{solid:19,tree:true,clasp:true});
   add(9,1810,415,218,{solid:40,tree:true,label:'The Hollow Elder'});
   add(7,710,1405,95,{solid:20,label:'Snowbell shrine'});
@@ -136,11 +137,11 @@ export function createWorld(){
   for(let i=0;i<12;i++){const y=300+i*105,x=riverX(y)+Math.sin(i*3)*15;if(waterAt(x,y)&&biomeAt(x,y)!=='winter')add(0,x,y,8+rand()*5,{art:63});}
   // Authored habitat communities; ordinary creatures remain neutral.
   const spawn=(type,x,y,extra={})=>creatures.push({id:`creature-${creatures.length}`,type,x,y,homeX:x,homeY:y,phase:rand()*6.28,...extra});
-  spawn('barkjaw',826,565,{pair:1});spawn('barkjaw',1035,610,{pair:1,separated:true});
+  spawn('barkjaw',826,245,{pair:1,openingArea:true});spawn('barkjaw',1035,290,{pair:1,separated:true,openingArea:true});
   spawn('barkjaw',450,590,{pair:2});spawn('barkjaw',490,630,{pair:2});
-  spawn('rootknife',675,555);spawn('rootknife',415,470);
-  [[945,553],[963,600],[1010,568]].forEach(([x,y])=>spawn('seedling',x,y,{quest:'herd'}));
-  spawn('petalmaw',430,255);spawn('petalmaw',880,335);spawn('seedling',330,720);
+  spawn('rootknife',675,555,{opening:true});spawn('rootknife',415,470);
+  PASTURE_SEEDLINGS.forEach(p=>spawn('seedling',p.x,p.y,{quest:'herd',level:1,openingArea:true}));
+  spawn('petalmaw',430,255);spawn('petalmaw',1180,-170,{opening:true,openingArea:true,level:2});spawn('seedling',330,720);
   spawn('mantleback',1550,720);spawn('mantleback',1710,380);spawn('mantleback',2050,660);
   spawn('prowler',1610,565);spawn('prowler',1940,490);spawn('prowler',2080,910);
   spawn('antler',1050,1330);spawn('antler',920,1560);
@@ -178,10 +179,16 @@ export function createWorld(){
   populateFrontier(world,add,{MIN_X,MIN_Y,MAX_X,MAX_Y,random,noise,biomeAt,pathDistance,canWalk,propsNear,inVillage});
   addAdventure(world,add);
   plantRootwalls(world,{canWalk,biomeAt,inVillage,propsNear,segmentDistance});
+  // The first fight and its retreat lane should teach combat, not trap the
+  // apprentice between a building, a random trunk and the haven boundary.
+  for(const p of world.props)if(p.solid&&!p.label&&!p.building&&!p.blockage&&(inOpeningRunway(p)||dist(p,PASTURE)<130))p.removed=true;
   return world;
 }
 
 function addAdventure(world,add){
+  // Keep the authored level-two road from inheriting stronger procedural
+  // frontier packs after moving it away from town. Its wildlife stays intact.
+  world.creatures=world.creatures.filter(c=>!c.frontier||c.camp||c.quest||SPECIES[c.type].neutral||!inBriarRoad(c));
   // Open a continuous winding footpath, leaving dense forest on both sides.
   for(const p of world.props)if(p.solid&&!p.label&&!p.building&&!p.blockage&&pathDistance(p.x,p.y)<p.solid+22)p.removed=true;
   for(const camp of ENCOUNTERS){
@@ -192,7 +199,7 @@ function addAdventure(world,add){
       for(let attempt=0;attempt<80;attempt++){
         const angle=n*2.4+attempt*.9,r=attempt===0?20:20+attempt*.7,x=camp.x+Math.cos(angle)*r,y=camp.y+Math.sin(angle)*r;
         if(!canWalk(world,x,y,8)||biomeAt(x,y)!==SPECIES[type].habitat||inVillage({x,y})||world.creatures.some(c=>dist(c,{x,y})<22))continue;
-        world.creatures.push({id:`encounter-${camp.id}-${n}`,type,x,y,homeX:x,homeY:y,phase:n*2,camp:camp.id,level:camp.level,elite:camp.elite&&n===0,name:camp.elite&&n===0?camp.name:undefined});break;
+        world.creatures.push({id:`encounter-${camp.id}-${n}`,type,x,y,homeX:x,homeY:y,phase:n*2,camp:camp.id,level:camp.level,openingArea:camp.hunt==='briar-road',elite:camp.elite&&n===0,name:camp.elite&&n===0?camp.name:undefined});break;
       }
     });
   }
@@ -202,7 +209,7 @@ function addAdventure(world,add){
     const a=path[i-1],b=path[i],length=dist(a,b);
     for(let step=160;step<length;step+=240){
       const t=step/length,x=a.x+(b.x-a.x)*t+18,y=a.y+(b.y-a.y)*t+18;
-      if(inVillage({x,y})||ENCOUNTERS.some(c=>dist(c,{x,y})<175)||world.creatures.some(c=>!SPECIES[c.type].neutral&&dist(c,{x,y})<130))continue;
+      if(inVillage({x,y})||inOpeningRunway({x,y})||inBriarRoad({x,y})||dist({x,y},PASTURE)<220||ENCOUNTERS.some(c=>dist(c,{x,y})<175)||world.creatures.some(c=>!SPECIES[c.type].neutral&&dist(c,{x,y})<130))continue;
       const type={spring:'seedling',autumn:'prowler',winter:'stormbell',ember:'wyrm'}[biomeAt(x,y)];
       for(let n=0;n<2;n++){const px=x+n*27,py=y+(rand()-.5)*24;if(!canWalk(world,px,py,5)||biomeAt(px,py)!==SPECIES[type].habitat)continue;world.creatures.push({id:`patrol-${route}-${i}-${step}-${n}`,type,x:px,y:py,homeX:px,homeY:py,phase:rand()*6.28,patrol:true});}
     }

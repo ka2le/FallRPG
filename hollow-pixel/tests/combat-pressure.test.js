@@ -11,12 +11,13 @@ function arena(type='rootknife',level=1,distance=150){
   g.creatures=[c];return {g,c};
 }
 function advance(g,seconds,input={}){for(let n=0;n<Math.round(seconds/.01);n++)g.update(.01,input);}
+const damage=g=>g.events.filter(e=>e.type==='player-damage').reduce((sum,e)=>sum+e.amount,0);
 
 test('monsters close distance faster and land repeated attacks during a standing exchange',()=>{
   const {g,c}=arena('rootknife',1,100),start=c.x;advance(g,1);
   assert.ok(start-c.x>45,'combat movement exceeds the old 39 units/sec');
-  c.x=g.player.x+30;c.y=g.player.y;c.homeX=c.x;c.homeY=c.y;c.attack=0;c.windup=0;const hp=g.player.hp;
-  advance(g,2.2);assert.ok(hp-g.player.hp>=16,'at least two strikes replace the old slow exchange');
+  c.x=g.player.x+30;c.y=g.player.y;c.homeX=c.x;c.homeY=c.y;c.attack=0;c.windup=0;const before=damage(g);
+  advance(g,2.2);assert.ok(damage(g)-before>=16,'at least two strikes land even while passive healing offsets a little damage');
 });
 test('running past an over-level melee hunter draws an opening rush and actual damage',()=>{
   const {g,c}=arena('rootknife',6,150);advance(g,.01);assert.equal(c.aggro,true,'the stronger hunter notices beyond the old 110-unit radius');
@@ -38,16 +39,16 @@ test('roots and stun still stop an opening rush',()=>{
 function grove(){const {g}=arena();g.creatures=[];const tree={id:'clasp-test',x:3030,y:3000,solid:0,clasp:true};g.world.props=[tree];return {g,tree};}
 test('Claspwoods visibly warn before damage and strike repeatedly if the player stays',()=>{
   const {g}=grove();advance(g,.29);assert.equal(g.player.hp,120);assert.ok(g.effects.some(e=>e.type==='warning'));
-  advance(g,.03);assert.equal(g.player.hp,114);advance(g,2.3);assert.equal(g.player.hp,102);
+  advance(g,.03);assert.equal(damage(g),6);advance(g,2.3);assert.equal(damage(g),18);assert.ok(g.player.hp<106);
 });
 test('moving out after the first tree strike prevents the rapid follow-up',()=>{
-  const {g}=grove();advance(g,.32);assert.equal(g.player.hp,114);advance(g,2,{left:true});assert.equal(g.player.hp,114);
+  const {g}=grove();advance(g,.32);assert.equal(damage(g),6);const hp=g.player.hp;advance(g,2,{left:true});assert.equal(damage(g),6);assert.ok(g.player.hp>hp&&g.player.hp<hp+3);
 });
 test('leaving during the tree warning dodges the strike; returning starts a fresh warning',()=>{
   const {g}=grove();advance(g,.1);g.player.y+=100;advance(g,1.5);assert.equal(g.player.hp,120);assert.equal(g.treeAttacks.size,0);
-  g.player.y-=100;advance(g,.2);assert.equal(g.player.hp,120);advance(g,.12);assert.equal(g.player.hp,114);
+  g.player.y-=100;advance(g,.2);assert.equal(g.player.hp,120);advance(g,.12);assert.equal(damage(g),6);
 });
 test('alarm calls share the tree cooldown and safe havens cancel pending roots',()=>{
-  const {g,tree}=grove();assert.ok(g.triggerTree(tree));assert.equal(g.triggerTree(tree),false);advance(g,.31);assert.equal(g.player.hp,114);assert.equal(g.triggerTree(tree),false);
-  advance(g,.81);assert.equal(g.treeAttacks.size,1);g.safeZonesEnabled=true;Object.assign(g.player,HOME);advance(g,.4);assert.equal(g.treeAttacks.size,0);assert.equal(g.player.hp,114);
+  const {g,tree}=grove();assert.ok(g.triggerTree(tree));assert.equal(g.triggerTree(tree),false);advance(g,.31);assert.equal(damage(g),6);assert.equal(g.triggerTree(tree),false);
+  advance(g,.81);assert.equal(g.treeAttacks.size,1);g.safeZonesEnabled=true;Object.assign(g.player,HOME);advance(g,.4);assert.equal(g.treeAttacks.size,0);assert.equal(damage(g),6);assert.ok(g.player.hp<117);
 });

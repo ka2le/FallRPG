@@ -1,6 +1,6 @@
 # Between Seasons workspace
 
-- This folder is the new, independent top-down game. Run its commands here, not in `wizard-combat/`.
+- This folder is the default active application for the FallRPG project: **The Hollow: Between Seasons**, the independent top-down pixel game. Unless the user explicitly names another game, implement gameplay, item, sprite and UI requests here. Run commands here, not in `wizard-combat/`.
 - Keep the original wizard game and both reference prototypes intact. Other collaborators may be editing them.
 - Canonical world and ecology documents live in `../wizard-combat/docs/lore/`. Reference them rather than creating competing lore copies.
 - Keep rendering, world queries, and collision consistent. Preserve neutral wildlife and habitat-dependent behavior.

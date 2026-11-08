@@ -91,7 +91,7 @@ export const FRONTIER_HABITATS=FRONTIER_DISTRICTS.flatMap((d,index)=>habitats[d.
 export function frontierHabitatAt(x,y){return FRONTIER_HABITATS.find(s=>Math.hypot(x-s.x,y-s.y)<s.radius);}
 export const FRONTIER_REWARDS=Object.fromEntries(FRONTIER_DISTRICTS.map((d,index)=>{
   const slot=['weapon','robe','charm','boots'][index%4],level=d.level;
-  const stats=slot==='weapon'?{power:level*.1,damage:level+2}:slot==='robe'?{health:level*8,armor:Math.min(.4,level*.022)}:slot==='charm'?{power:level*.045,mana:level*5,regen:2}: {speed:Math.min(.4,.15+level*.012),health:level*3};
+  const stats=slot==='weapon'?{power:level*.028,damage:Math.ceil(level*.3)}:slot==='robe'?{health:level*6,armor:Math.min(.32,level*.018)}:slot==='charm'?{power:level*.014,mana:level*5,regen:2}: {speed:Math.min(.28,.12+level*.009),health:level*3};
   const description=Object.entries(stats).map(([key,v])=>`${key==='power'||key==='armor'||key==='speed'?Math.round(v*100)+'%':v} ${key}`).join(' · ');
   return [`relic-${d.id}`,{name:`${d.name} ${slot==='weapon'?'heartwood':slot==='robe'?'mantle':slot==='charm'?'keystone':'boots'}`,slot,stats,description}];
 }));

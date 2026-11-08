@@ -1,5 +1,10 @@
 import { ROOTWALL } from './rootwall-layout.js';
 import { canWalk, dist } from './world.js';
+import { SPECIES } from './data.js';
+import { enemyPressure } from './combat-tuning.js';
+import { beginReturn, recoveryPerSecond } from './aggro.js';
+
+export const rootedWallMember=(group,rank)=>group.phase==='holding'||group.phase==='dispersing'&&group.elapsed<rank*ROOTWALL.releaseEvery;
 
 export function attachRootwalls(game){
   const actors=new Map(game.creatures.map(c=>[c.id,c]));
@@ -24,13 +29,28 @@ export function updateRootwalls(game,dt){
     const step=near?dt:g.moveClock>=.5?g.moveClock:0;
     if(step)g.moveClock=0;
     for(const [rank,c] of live.entries()){
-      c.aggro=dist(c,game.player)<80;c.state=`${g.phase} with the grove`;c.moving=false;
+      const rooted=rootedWallMember(g,rank),anchor=g.site?g.b:g.a,pressure=enemyPressure(c,SPECIES[c.type],game.player.level);
+      c.rooted=rooted;
+      if(c.provoked&&(game.isSafe||dist(c,anchor)>ROOTWALL.combatLeash||dist(c,game.player)>pressure.leash))beginReturn(c);
+      c.aggro=!!c.provoked;c.state=rooted?'rooted · regenerating':c.provoked?'defending the grove':`${g.phase} with the grove`;c.moving=false;
+      const heal=rooted?ROOTWALL.heal+ROOTWALL.healPerLevel*c.level:!c.aggro?recoveryPerSecond(c):0;
+      if(heal&&c.hp<c.maxHp){c.hp=Math.min(c.maxHp,c.hp+heal*dt);if(rooted&&dist(c,game.player)<350&&game.time>=(c.nextHealEffect||0)){game.effect('leaves',c.x,c.y,'#a8dc83',{life:.6,radius:20});c.nextHealEffect=game.time+1;}}
+      if(rooted){if(dist(c,game.player)<40)game.triggerTree(c);continue;}
+      c.pursuitTime=Math.max(0,(c.pursuitTime||0)-dt);
+      if(c.provoked){
+        if(c.root<=0&&c.stun<=0){const d=dist(c,game.player),speed=(c.pursuitTime>0?pressure.rushSpeed:pressure.speed)*(c.slow>0?.42:1);
+          if(d>32)game.walkCreature(c,game.player,Math.min(dt,(d-32)/speed),speed);
+          if(dist(c,game.player)<40)game.triggerTree(c);
+        }
+        continue;
+      }
       if(dist(c,game.player)<40)game.triggerTree(c);
       const i=c.rootIndex;
       let goal=null;
       if(g.phase==='scattered')goal=g.scatter[g.site][i][Math.floor((g.elapsed+i*1.7)/12)%2];
       if(g.phase==='gathering'&&g.elapsed>=rank*1.2)goal=g.walls[g.site][i];
       if(g.phase==='dispersing'&&g.elapsed>=rank*ROOTWALL.releaseEvery)goal=g.scatter[next][i][0];
+      if(c.returning&&goal){game.returnCreature(c,dt,{...pressure,returnSpeed:60},goal);continue;}
       if(!goal||!step||c.root>0||c.stun>0||game.treeAttacks.has(c)||dist(c,goal)<1)continue;
       const speed=(g.phase==='gathering'?ROOTWALL.gatherSpeed:ROOTWALL.scatterSpeed)*(c.slow>0?.42:1),d=dist(c,goal),travel=Math.min(d,speed*step);
       const x=c.x+(goal.x-c.x)/d*travel,y=c.y+(goal.y-c.y)/d*travel;

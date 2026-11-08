@@ -1,10 +1,12 @@
 import './style.css';
+import './game-ui.css';
+import './skills-ui.css';
 import { Game, SAVE_KEY } from './game.js';
 import { Renderer } from './render.js';
 import { UI, shell } from './ui.js';
 import { Soundscape } from './audio.js';
 import { saveScreenshot } from './screenshot.js';
-import { SPECIES } from './data.js';
+import { SPECIES, SLOTS } from './data.js';
 import { WorldTouchControls } from './touch-controls.js';
 
 document.getElementById('app').innerHTML=shell();
@@ -25,27 +27,26 @@ function save(manual=false){
 const ui=new UI(game,renderer,save),keys=new Set();
 const touch=new WorldTouchControls(canvas,{enabled:()=>!ui.modal&&!game.paused,tap:worldTap,getZoom:()=>renderer.zoom,setZoom:zoom=>renderer.setZoom(zoom),startMove:()=>{game.destination=null;game.route=[];}});
 ui.onPause=()=>{keys.clear();touch.reset();};
-const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','e','f','r','c',' ','1','2','3','h','enter','tab','j','k','m','i','escape'];
+const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',...SLOTS,'c',' ','h','enter','tab','j','k','m','i','escape'];
 function clearKeys(){keys.clear();touch.reset();}
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(k==='p'){e.preventDefault();if(!e.repeat)void printscreen();return;}
   if(ui.modal){
-    if(k==='enter'&&document.activeElement?.matches('a[href], [data-fullscreen]'))return;
+    if(k==='enter'&&document.activeElement?.matches('a[href], [data-fullscreen], .char button, .char select'))return;
     if(k==='c'||k==='enter'){e.preventDefault();ui.advanceDialogue();return;}
     if(k==='escape'){e.preventDefault();ui.close();clearKeys();return;}
     // Trap keyboard focus inside the open dialog.
-    if(k==='tab'){const focusable=[...document.querySelectorAll('#modal-root button:not(:disabled), #modal-root a[href]')],current=focusable.indexOf(document.activeElement),next=e.shiftKey?(current<=0?focusable.length-1:current-1):(current+1)%focusable.length;e.preventDefault();focusable[next]?.focus();}
+    if(k==='tab'){const focusable=[...document.querySelectorAll('#modal-root button:not(:disabled), #modal-root select:not(:disabled), #modal-root a[href]')],current=focusable.indexOf(document.activeElement),next=e.shiftKey?(current<=0?focusable.length-1:current-1):(current+1)%focusable.length;e.preventDefault();focusable[next]?.focus();}
     return;
   }
   // Space/Enter retain normal activation for focused menu buttons.
   if(document.activeElement?.tagName==='BUTTON'&&(k===' '||k==='enter'))return;
   if(handled.includes(k))e.preventDefault();keys.add(k);if(e.repeat)return;
-  if(['q','e','f','r'].includes(k))game.beginCast(k);
-  if(['1','2','3'].includes(k))game.setStance({1:'ember',2:'frost',3:'siphon'}[k]);
-  if(k==='c'||k==='enter')game.interact();if(k==='h')game.tonic();if(k==='tab'){const modes=[...game.stances];game.setStance(modes[(modes.indexOf(game.stance)+1)%3]);}
-  if(k===' ')game.autoAttack=!game.autoAttack;
-  if(k==='i'){clearKeys();ui.open('equipment');}if(k==='j'){clearKeys();ui.open('journal');}if(k==='k'){clearKeys();ui.open('grimoire');}if(k==='m'){clearKeys();ui.open('map');}if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
+  if(SLOTS.includes(k))game.beginCast(k);
+  if(k==='c'||k==='enter')game.interact();if(k==='h')game.tonic();if(k==='tab')game.cycleTarget();
+  if(k===' ')game.toggleAutoAttack();
+  if(k==='i'){clearKeys();ui.openCharacter('gear');}if(k==='j'){clearKeys();ui.open('journal');}if(k==='k'){clearKeys();ui.openCharacter('spells');}if(k==='m'){clearKeys();ui.open('map');}if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur',()=>{clearKeys();if(!ui.modal)ui.open('pause');save();});

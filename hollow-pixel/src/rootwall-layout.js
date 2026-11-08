@@ -1,8 +1,8 @@
 import { FRONTIER_DISTRICTS, FRONTIER_LOOPS } from './frontier.js';
 
-export const ROOTWALL={count:6,spacing:36,radius:16,hold:60,releaseEvery:5,gatherSpeed:22,scatterSpeed:15};
+export const ROOTWALL={count:6,spacing:36,radius:16,hold:60,releaseEvery:5,gatherSpeed:22,scatterSpeed:15,heal:18,healPerLevel:.6,combatLeash:500};
 export const ROOTWALL_SITES=[
-  {id:'briar-march',name:'The Briar March',a:{x:980,y:333},b:{x:1080,y:280},level:2},
+  {id:'briar-march',name:'The Briar March',a:{x:1000,y:95},b:{x:1030,y:95},level:2},
   {id:'scaffold-march',name:'The Scaffold March',a:{x:3970,y:563},b:{x:4150,y:478},level:6},
   ...FRONTIER_DISTRICTS.flatMap((d,index)=>d.biome!=='spring'?[]:[2,4,6].map((segment,n)=>{
     const path=FRONTIER_LOOPS[index],a=path[segment-1],b=path[segment];
