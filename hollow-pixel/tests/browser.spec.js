@@ -450,10 +450,10 @@ test('rapid Claspwood attacks telegraph clearly and can be escaped after the fir
     return {hp:g.player.hp,warning:g.effects.some(e=>e.type==='warning'),pending:g.treeAttacks.size};
   });
   expect(start).toEqual({hp:120,warning:true,pending:1});await page.screenshot({path:'artifacts/claspwood-warning.png'});
-  const hit=await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.paused=false;for(let n=0;n<7;n++)g.update(.05);g.paused=true;r.draw(0);return g.player.hp;});
-  expect(hit).toBe(114);await page.screenshot({path:'artifacts/claspwood-strike.png'});
-  const escaped=await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.paused=false;for(let n=0;n<40;n++)g.update(.05,{left:true});g.paused=true;r.draw(0);return g.player.hp;});
-  expect(escaped).toBe(114);await page.screenshot({path:'artifacts/claspwood-escape.png'});expect(errors).toEqual([]);
+  const hit=await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.events=[];g.paused=false;for(let n=0;n<7;n++)g.update(.05);g.paused=true;r.draw(0);return {hp:g.player.hp,damage:g.events.filter(e=>e.type==='player-damage').map(e=>e.amount)};});
+  expect(hit.damage).toEqual([6]);expect(hit.hp).toBeGreaterThanOrEqual(114);expect(hit.hp).toBeLessThan(115);await page.screenshot({path:'artifacts/claspwood-strike.png'});
+  const escaped=await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;g.events=[];g.paused=false;for(let n=0;n<40;n++)g.update(.05,{left:true});g.paused=true;r.draw(0);return {hp:g.player.hp,damage:g.events.filter(e=>e.type==='player-damage').map(e=>e.amount)};});
+  expect(escaped.damage).toEqual([]);expect(escaped.hp).toBeGreaterThanOrEqual(hit.hp);await page.screenshot({path:'artifacts/claspwood-escape.png'});expect(errors).toEqual([]);
 });
 
 test('Marching Claspwoods assemble a solid minute-long wall and peel away one at a time',async({page})=>{
