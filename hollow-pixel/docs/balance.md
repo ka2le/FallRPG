@@ -69,12 +69,12 @@ the harder hunter trio in every fixture; stationary basic attacks still lost.
 
 These are eight paired orientation seeds and one deterministic road per build,
 not human difficulty estimates. All outcomes, failures and source snapshots are
-in [the reviewed comparison](../artifacts/progression/2026-11-08T13-43-46-670Z/report.md).
+in [the reviewed comparison](progression-review.md).
 A fresh-seed follow-up completed 576 broader arenas and three ten-minute
 full-world expeditions. Power / Mana / spell focus each cleared 15 named camps,
 completed the Canopy bounty and reached levels 17 / 18 / 17 with 2 / 1 / 0 deaths.
 All ended at the time cap; none completed the whole wilderness. See the
-[full analysis](../artifacts/balance/2026-11-08T13-50-08-583Z/analysis-2026-11-08T13-54-49-191Z.md).
+[full analysis](progression-review.md).
 Final validation: 167 gameplay tests, 27 browser scenarios, build, 98 opening
 checks and 236 group/tree/return/resource probes passed.
 
