@@ -70,7 +70,7 @@ test('ranged enemies flank obstructing cover instead of standing in range indefi
 });
 test('the campaign bot keeps stronger equipment and reserves coins rather than buying endless tonics',()=>{
   const g=fieldGame([],HOME);g.player.level=5;g.player.coins=90;g.player.tonics=0;g.inventory.push('copperwand','briarcoat','amberfocus');g.equip('copperwand');g.quests.herd='complete';g.learned=new Set(['surge','ward','nova']);
-  resupply(g,'balanced');assert.equal(g.equipment.weapon,'copperwand');assert.equal(g.equipment.charm,'amberfocus');assert.ok(g.player.tonics<=2);
+  resupply(g,'balanced');assert.equal(g.equipment.weapon,'copperwand');assert.equal(g.equipment.trinket1,'amberfocus');assert.ok(g.player.tonics<=2);
 });
 
 test('the tactical bot closes into its own area spell range against a ranged pack',()=>{

@@ -1,13 +1,16 @@
 // Game-UI icons. Every icon has a vector fallback; when a pixel sprite for it
 // exists in public/assets/ui/, add its key to UI_SPRITES and the UI uses it.
 // Requested sprites and their descriptions: docs/ui-sprite-requests.md
-import { EQUIPMENT_SLOTS } from './items.js';
+import { EQUIPMENT_SLOTS, ITEM_TYPES, SLOT_ACCEPTS } from './items.js';
 import { pixelItem } from './item-sprites.js';
+import { wholeNumber as num, signedWholeNumber } from './display-numbers.js';
 export const UI_SPRITES=new Set([
   // e.g. 'stat-health', 'item-reedstaff', 'slot-weapon', 'attr-power'
 ]);
 
 const P={
+  map:'M3 7L11 3L21 8L29 4V25L21 29L11 24L3 28ZM11 3V24M21 8V29',
+  coin:'M16 4A12 12 0 1 0 16 28A12 12 0 1 0 16 4ZM16 9V23M12 12Q16 9 20 12M12 20Q16 23 20 20',
   heart:'M16 27C6 20 3 15 3 10A6.5 6.5 0 0 1 16 8A6.5 6.5 0 0 1 29 10C29 15 26 20 16 27Z',
   drop:'M16 3C22 11 25 15 25 20A9 9 0 0 1 7 20C7 15 10 11 16 3ZM12 20A4 4 0 0 0 16 24',
   star:'M16 3L19.5 12H28.5L21.5 18L24 27L16 21.5L8 27L10.5 18L3.5 12H12.5Z',
@@ -62,25 +65,33 @@ export const SLOT_INFO={
   relic:{name:'Relic',icon:'relic',hint:'Shorten spell recovery, strengthen your fox or lengthen Briarbind.'},
   lantern:{name:'Lantern',icon:'lantern',hint:'Carry brighter wards, wider blooms or restorative supplies.'},
 };
-export const SLOT_ORDER=EQUIPMENT_SLOTS;
+export const SLOT_ORDER=ITEM_TYPES; // item type order, for sorting
+// Body slots on the character: each accepts one or more item types.
+export const EQUIP_SLOT_INFO={
+  head:{name:'Head',icon:'head'},weapon:{name:'Main hand',icon:'staff'},offhand:{name:'Off hand',icon:'focus'},
+  robe:{name:'Body',icon:'robe'},boots:{name:'Feet',icon:'boot'},
+  trinket1:{name:'Trinket',icon:'ring'},trinket2:{name:'Trinket',icon:'charm'},trinket3:{name:'Trinket',icon:'relic'},
+};
+export const slotAccepts=slot=>(SLOT_ACCEPTS[slot]||[]).map(t=>SLOT_INFO[t]?.name||t);
+export { EQUIPMENT_SLOTS };
 
 // Derived character numbers shown in menus. `fmt` turns a raw value into display text.
-const pct=v=>`${+(v*100).toFixed(1)}%`,signPct=v=>`${v>=0?'+':'−'}${+Math.abs(v*100).toFixed(1)}%`,num=v=>`${Math.round(v)}`,dec=v=>v.toFixed(1);
+const pct=v=>`${num(v*100)}%`,signPct=v=>`${signedWholeNumber(v*100)}%`,dec=v=>v.toFixed(1);
 export const STAT_INFO={
   health:{name:'Health',icon:'heart',color:'#e07b6a',fmt:num,delta:v=>`${v>0?'+':'−'}${Math.abs(Math.round(v))}`,about:'How much harm you can take before falling.'},
   mana:{name:'Mana',icon:'drop',color:'#6fb7c6',fmt:num,delta:v=>`${v>0?'+':'−'}${Math.abs(Math.round(v))}`,about:'Maximum mana. Each Mana point increases both the pool and regeneration.'},
   regen:{name:'Mana recovery',icon:'regen',color:'#8fd0c7',fmt:v=>`${dec(v)}/s`,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(2)}/s`,about:'Mana refilled every second in combat. Outside combat, recover another 2/s.'},
   healthRegen:{name:'Health recovery',icon:'heart',color:'#a7ce94',fmt:v=>`${dec(v)}/s`,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(2)}/s`,about:'Slow passive healing: 0.5/s in combat and 1.2/s while resting or travelling outside combat.'},
   power:{name:'Magic power',icon:'star',color:'#e8c572',fmt:pct,delta:signPct,about:'Scales all spell and spark damage, and how long shields, roots and summons last.'},
-  damage:{name:'Spark damage',icon:'spark',color:'#efab69',fmt:num,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(1)}`,about:'Damage of each free automatic spark.'},
+  damage:{name:'Spark damage',icon:'spark',color:'#efab69',fmt:num,delta:signedWholeNumber,about:'Damage of each free automatic spark.'},
   armor:{name:'Protection',icon:'shield',color:'#b7c49a',fmt:pct,delta:signPct,about:'Share of incoming damage ignored (up to 60%).'},
   speed:{name:'Movement',icon:'boot',color:'#c9b6e4',fmt:signPct,delta:signPct,about:'Extra walking and running speed.'},
-  ward:{name:'Willow Ward',icon:'shield',color:'#bdd79f',fmt:num,delta:v=>`${v>0?'+':'−'}${Math.abs(v)}`,about:'Damage absorbed by a fresh Willow Ward.'},
-  bloom:{name:'Bloom radius',icon:'sprout',color:'#9fe08a',fmt:v=>`${v} u`,delta:v=>`${v>0?'+':'−'}${Math.abs(v)} u`,about:'Wildbloom reaches this far, with line of sight still required.'},
+  ward:{name:'Willow Ward',icon:'shield',color:'#bdd79f',fmt:num,delta:signedWholeNumber,about:'Damage absorbed by a fresh Willow Ward.'},
+  bloom:{name:'Bloom radius',icon:'sprout',color:'#9fe08a',fmt:v=>`${num(v)} u`,delta:v=>`${signedWholeNumber(v)} u`,about:'Wildbloom reaches this far, with line of sight still required.'},
   bind:{name:'Briarbind',icon:'sprout',color:'#a6cc85',fmt:v=>`${dec(v)}s`,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(1)}s`,about:'Root duration of the Briarbind empowered spark.'},
-  fox:{name:'Fox damage',icon:'spark',color:'#e5bc7d',fmt:dec,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(1)}`,about:'Damage per attack of a newly summoned Lantern Fox.'},
-  lance:{name:'Lance damage',icon:'spark',color:'#efab69',fmt:dec,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(1)}`,about:'Damage of Aether Lance. Extra spark damage applies only to free sparks.'},
-  tonic:{name:'Tonic healing',icon:'heart',color:'#e07b6a',fmt:num,delta:v=>`${v>0?'+':'−'}${Math.abs(v)}`,about:'Health restored by one tonic, capped at your maximum health. Recovery remains eight seconds.'},
+  fox:{name:'Fox damage',icon:'spark',color:'#e5bc7d',fmt:num,delta:signedWholeNumber,about:'Damage per attack of a newly summoned Lantern Fox.'},
+  lance:{name:'Lance damage',icon:'spark',color:'#efab69',fmt:num,delta:signedWholeNumber,about:'Damage of Aether Lance. Extra spark damage applies only to free sparks.'},
+  tonic:{name:'Tonic healing',icon:'heart',color:'#e07b6a',fmt:num,delta:signedWholeNumber,about:'Health restored by one tonic, capped at your maximum health. Recovery remains eight seconds.'},
   cooldown:{name:'Spell recovery',icon:'relic',color:'#c9b6e4',fmt:v=>`${v?'-':''}${pct(v)}`,delta:signPct,about:'Reduction to spell cooldowns, capped at 20%. Aether costs and basic spark timing stay the same.'},
 };
 export const STAT_ORDER=['health','healthRegen','mana','regen','power','damage','armor','speed','ward','bloom','bind','fox','lance','tonic','cooldown'];
@@ -88,18 +99,18 @@ export const STAT_ORDER=['health','healthRegen','mana','regen','power','damage',
 // Raw gear stat → readable line on item cards.
 export const GEAR_STAT={
   power:{icon:'star',text:v=>`${signPct(v)} magic power`},
-  damage:{icon:'spark',text:v=>`+${v} spark damage`},
+  damage:{icon:'spark',text:v=>`${signedWholeNumber(v)} spark damage`},
   health:{icon:'heart',text:v=>`${v>=0?'+':''}${Math.round(v)} health`},
   armor:{icon:'shield',text:v=>`${pct(v)} protection`},
   mana:{icon:'drop',text:v=>`${v>=0?'+':''}${Math.round(v)} aether`},
   regen:{icon:'regen',text:v=>`${v>=0?'+':''}${v} aether/s`},
   speed:{icon:'boot',text:v=>`${signPct(v)} movement`},
-  ward:{icon:'shield',text:v=>`+${v} Willow Ward absorption`},
-  bloom:{icon:'sprout',text:v=>`+${v} Wildbloom radius`},
+  ward:{icon:'shield',text:v=>`${signedWholeNumber(v)} Willow Ward absorption`},
+  bloom:{icon:'sprout',text:v=>`${signedWholeNumber(v)} Wildbloom radius`},
   bind:{icon:'sprout',text:v=>`+${v}s Briarbind`},
   fox:{icon:'spark',text:v=>`${signPct(v)} Lantern Fox damage`},
   lance:{icon:'spark',text:v=>`${signPct(v)} Aether Lance damage`},
-  tonic:{icon:'heart',text:v=>`+${v} healing per tonic`},
+  tonic:{icon:'heart',text:v=>`${signedWholeNumber(v)} healing per tonic`},
   cooldown:{icon:'relic',text:v=>`${pct(v)} shorter spell recovery`},
 };
 

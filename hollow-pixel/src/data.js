@@ -36,7 +36,8 @@ export const STANCES = [
 ];
 export const SPELL_BY_ID = Object.fromEntries(SPELLS.map(s=>[s.id,s]));
 export const NUMBER_SLOTS=['1','2','3','4','5','6','7','8','9'];
-export const OPTIONAL_SLOTS=['q','e','f','r'];
+// F is reserved for the healing tonic.
+export const OPTIONAL_SLOTS=['q','e','r'];
 export const SLOTS=[...NUMBER_SLOTS,...OPTIONAL_SLOTS];
 export const DEFAULT_BINDINGS=Object.fromEntries([...NUMBER_SLOTS.map((key,i)=>[key,ACTIVE_SPELL_IDS[i]||'']),...OPTIONAL_SLOTS.map((key,i)=>[key,ACTIVE_SPELL_IDS[i]])]);
 

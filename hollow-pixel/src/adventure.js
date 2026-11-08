@@ -20,10 +20,10 @@ export const GEAR={
   crownstaff:{name:'The last lantern',slot:'weapon',stats:{power:.44,damage:4},description:'+44% magic power · +4 basic damage. Crownless Road reward.'},
 };
 export const LESSONS={
-  surge:{level:2,points:1},ward:{level:3,points:1,requires:'surge'},
-  nova:{level:5,points:1,requires:'ward'},haste:{level:7,points:1,requires:'nova'},
-  bind:{level:9,points:1,requires:'haste'},fox:{level:11,points:1,requires:'bind'},
-  renew:{level:7,points:1,requires:'haste'},
+  // No prerequisites: any spell can be learned once its level is reached.
+  surge:{level:1,points:1},ward:{level:2,points:1},
+  nova:{level:4,points:1},haste:{level:6,points:1},
+  renew:{level:6,points:1},bind:{level:8,points:1},fox:{level:10,points:1},
 };
 // Legacy casting styles remain available to prototypes, outside this progression.
 export const STANCE_LESSONS={};
@@ -85,6 +85,8 @@ export function dangerAt(x,y){
 }
 export function creatureStats(c,s){
   const level=c.level||dangerAt(c.homeX,c.homeY).level,elite=!!c.elite;
-  const pressure=!s.neutral&&c.type!=='seedling'?(level<=3?.75:level<=6?.88:1):1;
-  return {level,maxHp:Math.round(s.hp*(1+(level-1)*.24)*(elite?1.65:1)),damage:Math.round(s.damage*pressure*(s.ranged?.8:1)*(1+(level-1)*.27)*(elite?1.25:1)),xp:Math.round((20+(level-1)*7)*(elite?2:1)),coins:3+level*(elite?3:1)};
+  const hostile=!s.neutral,body=!hostile||s.rootwall?1:c.type==='seedling'?.9:.75;
+  const pressure=!hostile?1:c.type==='seedling'?.75:level<=3?.6:level<=6?.72:.85;
+  return {level,maxHp:Math.round(s.hp*body*(1+(level-1)*(hostile&&!s.rootwall?.16:.24))*(elite?(hostile?1.45:1.65):1)),damage:Math.max(1,Math.round(s.damage*pressure*(s.ranged?.8:1)*(1+(level-1)*(hostile?.14:.27))*(elite?(hostile?1.15:1.25):1))),xp:Math.round((20+(level-1)*7)*(elite?2:1)),coins:3+level*(elite?3:1)};
 }
+export function legacyCreatureMaxHp(c,s){return Math.round(s.hp*(1+((c.level||1)-1)*.24)*(c.elite?1.65:1));}

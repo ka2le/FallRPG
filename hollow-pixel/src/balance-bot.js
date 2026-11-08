@@ -21,9 +21,9 @@ export function resupply(game,build){
   growBuild(game,build);
   // Only legal, earned gear and affordable supplies.
   const score=item=>{const s=item.stats;return item.slot==='weapon'?(s.power||0)*4+(s.damage||0)*.1:item.slot==='robe'?(s.armor||0)*5+(s.health||0)*.015:item.slot==='boots'?(s.speed||0)*5+(s.health||0)*.01:(s.power||0)*(build==='power'?3:1)+(s.mana||0)*(build==='mana'?.03:.01)+(s.regen||0)*(build==='mana'?.8:.3)+(s.health||0)*.005;};
-  const equipBest=()=>{for(const slot of ['weapon','robe','boots','charm']){const best=game.inventory.filter(id=>GEAR[id].slot===slot).sort((a,b)=>score(GEAR[b])-score(GEAR[a]))[0];if(best)game.equip(best);}};
+  const equipBest=()=>{for(const slot of ['weapon','robe','boots','charm']){const best=game.inventory.filter(id=>GEAR[id].slot===slot).sort((a,b)=>score(GEAR[b])-score(GEAR[a]))[0];if(best)game.equip(best,slot==='charm'?'trinket1':undefined);}};
   equipBest();
-  for(const id of ['copperwand','wayboots','mosscharm'])if(!game.equipment[GEAR[id].slot]||score(GEAR[id])>score(GEAR[game.equipment[GEAR[id].slot]]))game.buyGear(id);
+  for(const id of ['copperwand','wayboots','mosscharm'])if(!game.equippedOfType(GEAR[id].slot)||score(GEAR[id])>score(GEAR[game.equippedOfType(GEAR[id].slot)]))game.buyGear(id);
   equipBest();
   // Preserve an upgrade reserve instead of spending every coin on four tonics.
   const reserve=game.player.level>=3&&!game.inventory.includes('copperwand')?30:0;

@@ -7,6 +7,76 @@ test.beforeEach(async({page})=>{
   await mkdir('artifacts',{recursive:true});
 });
 
+for(const width of [1440,390])test(`level-up stays in the upper HUD and flies to the skill menu at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await page.evaluate(()=>window.__hollow.game.reward(140));
+  const notice=page.locator('#levelup'),character=page.locator('.menu-icons [data-menu="equipment"]');
+  await expect(notice).toHaveText('Level 2');await expect(notice).toBeVisible();
+  await expect(character.locator('.skill-orb')).toBeVisible();
+  const layout=await page.evaluate(()=>{
+    const box=id=>document.querySelector(id).getBoundingClientRect(),n=box('#levelup');
+    const overlaps=other=>n.left<other.right&&n.right>other.left&&n.top<other.bottom&&n.bottom>other.top;
+    return {top:n.top,bottom:n.bottom,center:n.x+n.width/2,blocked:['#vitals','.menu-icons','#adventure-status'].some(s=>overlaps(box(s))),pointer:getComputedStyle(document.querySelector('#levelup')).pointerEvents};
+  });
+  expect(layout.top).toBeLessThanOrEqual(70);expect(layout.bottom).toBeLessThan(110);expect(layout.center).toBeCloseTo(width/2,0);
+  expect(layout.blocked).toBe(false);expect(layout.pointer).toBe('none');
+  const start=await page.evaluate(()=>window.__hollow.game.player.x);await page.keyboard.down('d');
+  await page.waitForFunction(x=>window.__hollow.game.player.x>x+8,start);await page.keyboard.up('d');
+  await page.screenshot({path:`artifacts/level-up-hud-${width}.png`});
+  await page.waitForTimeout(2500);await expect(notice).toBeVisible();await expect(notice).not.toHaveClass(/leaving/);
+  await expect(notice).toHaveClass(/leaving/);
+  // Inspect the rendered end of the flight against the actual menu location.
+  const landing=await notice.evaluate(el=>{
+    const animation=el.getAnimations()[0];animation.pause();animation.currentTime=799;
+    const a=el.getBoundingClientRect(),b=document.querySelector('.menu-icons [data-menu="equipment"]').getBoundingClientRect();
+    const distance=Math.hypot(a.x+a.width/2-b.x-b.width/2,a.y+a.height/2-b.y-b.height/2);
+    animation.play();return distance;
+  });
+  expect(landing).toBeLessThan(3);await expect(notice).toBeHidden();
+  await expect(character).toHaveClass(/landed/);await expect(character.locator('.skill-orb')).toBeVisible();
+  await character.click();await expect(page.getByRole('tab',{name:'Spells',exact:true})).toHaveAttribute('aria-selected','true');
+  await page.keyboard.press('Escape');await expect(character.locator('.skill-orb')).toBeVisible();
+  await character.click();await page.locator('[data-learn="surge"]').click();await page.locator('[data-upgrade-spell="surge"]').click();
+  await expect(character.locator('.skill-orb')).toBeHidden();await page.keyboard.press('Escape');
+  await expect(character).not.toHaveClass(/skill-ready/);
+});
+
+test('level-up handles repeated gains, early menu opening and reduced motion',async({page})=>{
+  await page.evaluate(()=>window.__hollow.game.reward(140));await expect(page.locator('#levelup')).toHaveText('Level 2');
+  await page.waitForFunction(()=>!!window.__hollow.ui.hud.levelFlight);
+  await page.evaluate(()=>window.__hollow.game.reward(180));await expect(page.locator('#levelup')).toHaveText('Level 3');
+  await page.locator('.menu-icons [data-menu="equipment"]').click();await expect(page.locator('#levelup')).toBeHidden();
+  await page.waitForTimeout(900);await expect(page.locator('.menu-icons .landed')).toHaveCount(0);await page.keyboard.press('Escape');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.evaluate(()=>window.__hollow.game.reward(10000));await expect(page.locator('#levelup')).toBeVisible();
+  await expect(page.locator('#levelup')).toBeHidden({timeout:6500});
+  await expect(page.locator('.skill-orb')).toBeVisible();
+  expect(await page.locator('.skill-orb').evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+});
+
+test('spell bindings and combat amounts display clear labels and whole numbers',async({page})=>{
+  await page.evaluate(()=>{
+    const {game:g}=window.__hollow;g.player.level=12;g.attributes.power=3;
+    g.learned=new Set(['surge','ward','nova','haste','renew','bind','fox']);g.spellUpgrades=new Set(g.learned);g.recalculate();
+  });
+  await page.keyboard.press('k');
+  const bindings=page.getByRole('button',{name:'Bindings',exact:true});await expect(bindings).toBeVisible();
+  await expect(bindings.locator('kbd')).toHaveCount(0);await bindings.click();await expect(page.locator('.sb-slots')).toBeVisible();
+  await page.getByRole('button',{name:'Done',exact:true}).click();await expect(bindings).toBeVisible();
+  for(const value of await page.locator('.sm.dmg b,.sm.shield b,.sm.heal b').allTextContents())expect(value).toMatch(/^\d+$/);
+  for(const id of ['surge','ward','nova','renew','fox']){
+    await page.locator(`.spell-entry[data-spell="${id}"]`).hover();
+    const rows=await page.locator('.tip-spell li').evaluateAll(rows=>rows.filter(r=>/^(Damage|Damage per bite|Shield|Healing)$/.test(r.querySelector('span').textContent)).map(r=>r.querySelector('b').textContent));
+    expect(rows.length).toBeGreaterThan(0);for(const value of rows)expect(value).toMatch(/^\d+$/);
+  }
+  await page.locator('.spell-stats summary').click();
+  for(const id of ['damage','ward','fox','lance','tonic'])await expect(page.locator(`.stat-sheet [data-tip-id="${id}"] b`)).toHaveText(/^\d+$/);
+  await page.getByRole('tab',{name:'Stats',exact:true}).click();await page.locator('[data-grow="power"]').click();
+  const deltas=await page.locator('.stat-sheet [data-tip-id="damage"] em,.stat-sheet [data-tip-id="ward"] em,.stat-sheet [data-tip-id="fox"] em,.stat-sheet [data-tip-id="lance"] em').allTextContents();
+  expect(deltas.some(Boolean)).toBe(true);for(const value of deltas.filter(Boolean))expect(value).toMatch(/^[+−]\d+$/);
+  await page.screenshot({path:'artifacts/whole-number-spell-stats.png'});
+});
+
 test('unified Items Spells Stats tabs spend shared skill points and grow an initially empty hotbar',async({page})=>{
   await expect(page.locator('[data-cast]')).toHaveCount(0);await page.evaluate(()=>window.__hollow.game.reward(140));await page.keyboard.press('k');
   await expect(page.getByRole('dialog',{name:'Character',exact:true})).toBeVisible();await expect(page.getByRole('tab')).toHaveCount(3);
@@ -100,7 +170,7 @@ test('loading a paused-attack save restores automatic sparks and a keyboard appr
   try{await page.waitForFunction(()=>window.__hollow.game.creatures.some(c=>c.quest==='herd'&&c.hp<c.maxHp),null,{timeout:6000});}
   finally{await page.keyboard.up('w');}
   expect(await page.evaluate(()=>window.__hollow.game.player.mana)).toBe(100);
-  await page.keyboard.press('Space');const paused=page.getByRole('button',{name:'Automatic basic attacks off',exact:true});
+  await page.keyboard.press('c');const paused=page.getByRole('button',{name:'Automatic basic attacks off',exact:true});
   await expect(paused).toHaveAttribute('aria-pressed','false');await expect(paused.locator('.basic-status')).toHaveText('OFF');
   await paused.click();await expect(page.getByRole('button',{name:'Automatic basic attacks on',exact:true})).toHaveAttribute('aria-pressed','true');
   await page.screenshot({path:'artifacts/automatic-basic-attack.png'});
@@ -143,7 +213,7 @@ test('minimal HUD, keyboard conversations, bindings and saves',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await expect(page.locator('#welcome,.quest-tracker,.ongoing-note,#coordinates')).toHaveCount(0);
   await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.player.x=1040;game.player.y=825;renderer.camera.x=1040;renderer.camera.y=825*.72;});
-  await page.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');await page.keyboard.press('c');
+  await page.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');await page.keyboard.press('Space');
   await expect(page.getByRole('dialog',{name:'Rowan',exact:true})).toBeVisible();
   await page.screenshot({path:'artifacts/dialogue.png'});await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -151,7 +221,7 @@ test('minimal HUD, keyboard conversations, bindings and saves',async({page})=>{
   await page.keyboard.press('j');await expect(page.locator('.quest-entry')).toHaveCount(1);await page.keyboard.press('Escape');
   await page.evaluate(()=>{const g=window.__hollow.game;for(const c of g.creatures.filter(c=>c.quest==='herd'))g.hurt(c,999);g.questAction('herd');g.player.level=11;g.player.coins=1000;g.recalculate();});
   await page.keyboard.press('k');await expect(page.getByRole('dialog',{name:'Character',exact:true})).toBeVisible();for(const id of ['surge','ward','nova','haste','bind','fox'])await page.locator(`[data-learn="${id}"]`).click();
-  await page.locator('[data-spell-key]').selectOption('r');await page.locator('[data-spell-assign="fox"]').click();
+  await page.locator('[data-spell-select="fox"]').click();await page.locator('[data-bind-slot="r"]').click();
   await expect(page.locator('[data-spell-select="fox"]')).toContainText('R');
   await page.screenshot({path:'artifacts/grimoire.png'});await page.keyboard.press('Escape');
   await page.keyboard.press('2');await page.evaluate(()=>window.__hollow.save());await page.reload();await page.waitForFunction(()=>!!window.__hollow);
@@ -166,10 +236,10 @@ test('all four habitats, full sprite silhouettes and compact layouts render',asy
     await page.waitForTimeout(250);await page.screenshot({path:`artifacts/${name}.png`});
   }
   expect(await page.evaluate(()=>[window.__hollow.renderer.sprites.environment.length,window.__hollow.renderer.sprites.creatures.length])).toEqual([64,64]);
-  await page.keyboard.press('m');await expect(page.getByRole('dialog',{name:'Map',exact:true})).toBeVisible();await page.screenshot({path:'artifacts/atlas.png'});await page.keyboard.press('Escape');
+  await page.keyboard.press('m');await expect(page.getByRole('dialog',{name:'Journal',exact:true})).toBeVisible();await expect(page.locator('#atlas-canvas')).toBeVisible();await page.screenshot({path:'artifacts/atlas.png'});await page.keyboard.press('Escape');
   await page.setViewportSize({width:1024,height:768});await page.waitForTimeout(150);await page.screenshot({path:'artifacts/compact.png'});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.setViewportSize({width:390,height:844});await page.locator('[data-menu="grimoire"]').click();
+  await page.setViewportSize({width:390,height:844});await page.locator('.menu-icons [data-menu="equipment"]').click();await page.locator('[data-char-tab="spells"]').click();
   await expect(page.locator('.no-spells')).toBeVisible();await expect(page.locator('.known-spell')).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'artifacts/narrow.png'});
   expect(errors).toEqual([]);
 });
@@ -178,10 +248,10 @@ test('keyboard walking, mode attacks and deliberate spell placement work',async(
   const x=await page.evaluate(()=>window.__hollow.game.player.x);await page.keyboard.down('d');await page.waitForFunction(x=>window.__hollow.game.player.x>x+10,x);await page.keyboard.up('d');
   const before=await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];game.world.interactables=[];const s=renderer.screen(game.player.x+60,game.player.y),r=renderer.canvas.getBoundingClientRect();return {x:game.player.x,clickX:s.x/renderer.width*r.width,clickY:s.y/renderer.height*r.height};});
   await page.mouse.click(before.clickX,before.clickY);await page.waitForTimeout(150);expect(await page.evaluate(()=>window.__hollow.game.player.x)).toBe(before.x);
-  await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];Object.assign(game.bindings,{q:'bramble',e:'frost',f:'ward',r:'wave'});game.learned=new Set(['surge','nova','haste','bramble','bind','frost','ward','wave','siphon','renew','blink','fox']);game.stances=new Set(['ember','frost','siphon']);game.safeZonesEnabled=false;game.player.x=1080;game.player.y=855;game.route=[];game.destination=null;game.creatures=game.creatures.filter(c=>c.type==='seedling').slice(0,1);const c=game.creatures[0];Object.assign(c,{x:1160,y:855,homeX:1160,homeY:855,hp:200,maxHp:200,root:100});game.target=null;renderer.camera.x=1080;renderer.camera.y=855*.72;});
+  await page.evaluate(()=>{const {game,renderer}=window.__hollow;game.world.props=[];Object.assign(game.bindings,{q:'bramble',e:'frost',r:'wave'});game.learned=new Set(['surge','nova','haste','bramble','bind','frost','ward','wave','siphon','renew','blink','fox']);game.stances=new Set(['ember','frost','siphon']);game.safeZonesEnabled=false;game.player.x=1080;game.player.y=855;game.route=[];game.destination=null;game.creatures=game.creatures.filter(c=>c.type==='seedling').slice(0,1);const c=game.creatures[0];Object.assign(c,{x:1160,y:855,homeX:1160,homeY:855,hp:200,maxHp:200,root:100});game.target=null;renderer.camera.x=1080;renderer.camera.y=855*.72;});
   await page.waitForFunction(()=>window.__hollow.game.creatures[0].hp<200);
   await page.keyboard.press('1');expect(await page.evaluate(()=>window.__hollow.game.aiming)).toBe(null);await page.keyboard.press('3');expect(await page.evaluate(()=>window.__hollow.game.cooldowns.nova>0)).toBe(true);
-  await page.keyboard.press('f');expect(await page.evaluate(()=>window.__hollow.game.player.shield)).toBe(45);
+  await page.keyboard.press('2');expect(await page.evaluate(()=>window.__hollow.game.player.shield)).toBe(45);
   await page.evaluate(()=>window.__hollow.game.player.mana=100);await page.keyboard.press('q');expect(await page.evaluate(()=>window.__hollow.game.aiming?.slot)).toBe('q');
   const target=await page.evaluate(()=>{const {renderer}=window.__hollow,s=renderer.screen(1130,855),r=renderer.canvas.getBoundingClientRect();return {x:s.x/renderer.width*r.width,y:s.y/renderer.height*r.height};});
   await page.mouse.move(target.x,target.y);await page.screenshot({path:'artifacts/placement.png'});await page.mouse.click(target.x,target.y);
@@ -212,7 +282,7 @@ test('growth, numbered spells and optional bindings are usable without placement
   await page.keyboard.press('1');expect(await page.evaluate(()=>[window.__hollow.game.empowered,window.__hollow.game.aiming])).toEqual(['surge',null]);expect(await page.evaluate(()=>window.__hollow.game.player.mana)).toBeGreaterThanOrEqual(100);
   await expect(page.locator('[data-cast="1"]')).toHaveClass(/armed/);await page.keyboard.press('q');expect(await page.evaluate(()=>window.__hollow.game.empowered)).toBe(null);
   await page.keyboard.press('2');expect(await page.evaluate(()=>window.__hollow.game.player.shield)).toBeGreaterThan(45);await page.keyboard.press('9');
-  await page.keyboard.press('k');await page.locator('[data-spell-select="ward"]').click();await page.locator('[data-spell-key]').selectOption('q');await page.locator('[data-spell-assign="ward"]').click();await page.locator('[data-spell-select="surge"]').click();await page.locator('[data-spell-key]').selectOption('9');await page.locator('[data-spell-assign="surge"]').click();
+  await page.keyboard.press('k');await page.locator('[data-spell-select="ward"]').click();await page.locator('[data-bind-slot="q"]').click();await page.locator('[data-spell-select="surge"]').click();await page.locator('[data-bind-slot="9"]').click();
   await page.screenshot({path:'artifacts/new-spells.png'});await page.keyboard.press('Escape');
   expect(await page.evaluate(()=>[window.__hollow.game.bindings.q,window.__hollow.game.bindings['9']])).toEqual(['ward','surge']);
   await page.evaluate(()=>window.__hollow.save());await page.reload();await page.waitForFunction(()=>!!window.__hollow);
@@ -317,7 +387,7 @@ test('expanded regions, new atlases, wildlife journal and bounded terrain cache 
   await expect(page.locator('[data-portrait="8"][data-atlas="wildlife"]')).toHaveAttribute('src',/^data:image\/png/);await page.screenshot({path:'artifacts/expanded-journal.png'});await page.keyboard.press('Escape');
   await page.keyboard.press('m');await page.screenshot({path:'artifacts/expanded-map.png'});await page.keyboard.press('Escape');
   await page.evaluate(()=>{const {game,renderer}=window.__hollow;const npc=game.world.interactables.find(i=>i.kind==='npc'&&i.dialogue);game.player.x=npc.x;game.player.y=npc.y+15;renderer.camera.x=npc.x;renderer.camera.y=npc.y*.72;});
-  await page.waitForFunction(()=>!!window.__hollow.game.nearby?.dialogue);await page.keyboard.press('c');await expect(page.getByRole('dialog')).toBeVisible();await page.screenshot({path:'artifacts/expanded-camp-dialogue.png'});await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.waitForFunction(()=>!!window.__hollow.game.nearby?.dialogue);await page.keyboard.press('Space');await expect(page.getByRole('dialog')).toBeVisible();await page.screenshot({path:'artifacts/expanded-camp-dialogue.png'});await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -367,17 +437,21 @@ test('camera motion preserves tree pixels and wildlife sorts on both sides of a 
 
 test('RPG rewards, equipment, lessons, bounty turn-ins and a fresh journey work through menus',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await expect(page.locator('#adventure-status')).toContainText('Speak to Rowan');
-  await page.keyboard.press('f');expect(await page.evaluate(()=>window.__hollow.game.player.shield)).toBe(0);
+  // Rowan's offer stays out of the quest UI until he has told you about it.
+  await expect(page.locator('#adventure-status .qt')).toHaveCount(0);
+  // F drinks a tonic (never a spell); at full health it is kept.
+  await page.keyboard.press('f');expect(await page.evaluate(()=>[window.__hollow.game.player.shield,window.__hollow.game.player.tonics])).toEqual([0,3]);
+  await page.evaluate(()=>window.__hollow.game.player.hp=40);await page.keyboard.press('f');expect(await page.evaluate(()=>window.__hollow.game.player.tonics)).toBe(2);await page.waitForTimeout(100);
   await page.evaluate(()=>{const g=window.__hollow.game;g.questAction('herd');for(const c of g.creatures.filter(c=>c.quest==='herd'))g.hurt(c,999);g.questAction('herd');});
   await page.keyboard.press('i');await expect(page.getByRole('dialog',{name:'Character',exact:true})).toBeVisible();
   await page.locator('[data-char-tab="gear"]').click();await page.locator('[data-equip="reedstaff"]').click();await expect(page.locator('[data-equip="reedstaff"]')).toHaveAttribute('aria-pressed','true');await page.screenshot({path:'artifacts/rpg-equipment.png'});await page.keyboard.press('Escape');
   await page.evaluate(()=>window.__hollow.game.reward(180));await page.keyboard.press('k');await page.locator('[data-learn="surge"]').click();await page.locator('[data-learn="ward"]').click();expect(await page.evaluate(()=>window.__hollow.game.learned.has('ward'))).toBe(true);await page.keyboard.press('Escape');
-  await page.keyboard.press('j');await page.locator('[data-quest-action="briar-road"]').click();
+  await page.keyboard.press('j');await expect(page.locator('.quest-entry[data-quest="briar-road"]')).toHaveCount(0);await page.keyboard.press('Escape');
+  await page.evaluate(()=>window.__hollow.ui.open('rowan'));await page.locator('[data-quest-action="briar-road"]').click();
   await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;Object.assign(g.player,{x:870,y:440,invulnerable:100});g.autoAttack=false;r.camera.x=870;r.camera.y=440*.72;});
   await page.waitForTimeout(250);await page.screenshot({path:'artifacts/rpg-briar-road.png'});
   await page.evaluate(()=>{const {game:g,renderer:r}=window.__hollow;for(const c of g.creatures.filter(c=>['briar-turn','root-hollow','thorn-den'].includes(c.camp)))g.hurt(c,9999);Object.assign(g.player,{x:1040,y:825});r.camera.x=1040;r.camera.y=825*.72;g.target=null;});
-  await page.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');await page.keyboard.press('c');await page.locator('[data-quest-action="briar-road"]').click();
+  await page.waitForFunction(()=>window.__hollow.game.nearby?.id==='rowan');await page.keyboard.press('Space');await page.locator('[data-quest-action="briar-road"]').click();
   expect(await page.evaluate(()=>window.__hollow.game.inventory.includes('briarcoat'))).toBe(true);
   await page.evaluate(()=>window.__hollow.save());await page.reload();await page.waitForFunction(()=>!!window.__hollow);
   expect(await page.evaluate(()=>[window.__hollow.game.equipment.weapon,window.__hollow.game.quests['briar-road'],window.__hollow.game.learned.has('ward')])).toEqual(['reedstaff','complete',true]);
@@ -398,7 +472,7 @@ test('the tenfold frontier renders dense habitats, working refuges and a zoomabl
   }
   const mossway=districts.find(d=>d.id==='mossway');
   await page.evaluate(d=>{const {game:g,renderer:r}=window.__hollow;g.quests['briar-road']='complete';g.refreshHunts();g.player.x=d.hub.x-15;g.player.y=d.hub.y-10;g.player.invulnerable=100;g.target=null;r.camera.x=g.player.x;r.camera.y=g.player.y*.72;},mossway);
-  await page.waitForFunction(()=>window.__hollow.game.nearby?.name==='Fern');await page.keyboard.press('c');
+  await page.waitForFunction(()=>window.__hollow.game.nearby?.name==='Fern');await page.keyboard.press('Space');
   await expect(page.getByRole('dialog',{name:'Fern',exact:true})).toBeVisible();await page.locator('[data-quest-action="road-mossway"]').click();
   expect(await page.evaluate(()=>window.__hollow.game.quests['road-mossway'])).toBe('active');
   await page.keyboard.press('m');await page.getByRole('button',{name:'Whole world',exact:true}).click();await page.screenshot({path:'artifacts/frontier-whole-world.png'});

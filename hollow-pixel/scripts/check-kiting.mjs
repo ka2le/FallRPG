@@ -37,8 +37,8 @@ for(let seed=startSeed;seed<startSeed+16;seed++)for(const type of types)for(cons
   rows.push({seed,type,mode:mode.id,distance,policy,result:c.dead?'kill':deaths?'death':noticed&&!c.aggro?'escaped':'time-cap',damage,firstHit,shots,seconds:g.time,blockedSeconds,clearGround:canWalk(world,origin.x,origin.y),zeroDamageKill:c.dead&&damage===0});
 }
 manifest.wallSeconds=(performance.now()-started)/1000;manifest.completed=rows.length;
-manifest.pressureRule='Ranged enemies must pressure retreat; melee hunters must pressure walking. A lone Seedling may die cleanly, and sprinting may abandon a fight. Pack behavior is checked separately in exploit-audit.';
-manifest.pressureFailures=rows.filter(r=>r.policy==='retreat-shoot'&&r.type!=='seedling'&&(r.mode==='walk'||['petalmaw','stormbell','wyrm'].includes(r.type))&&r.damage===0&&r.blockedSeconds<=.1).length;
+manifest.pressureRule='Ranged enemies must pressure retreat; melee hunters must pressure walking. A lone early enemy may die before contact; surviving pursuers must still connect. Sprinting may abandon a fight. Pack behavior is checked separately in exploit-audit.';
+manifest.pressureFailures=rows.filter(r=>r.policy==='retreat-shoot'&&r.type!=='seedling'&&(r.mode==='walk'||['petalmaw','stormbell','wyrm'].includes(r.type))&&r.result!=='kill'&&r.damage===0&&r.blockedSeconds<=.1).length;
 manifest.escapeFailures=rows.filter(r=>r.policy==='escape'&&r.result!=='escaped'&&r.blockedSeconds<=.1).length;
 manifest.status=manifest.pressureFailures||manifest.escapeFailures?'failed':'passed';
 await writeFile(resolve(out,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx'});

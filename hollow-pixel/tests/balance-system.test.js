@@ -23,11 +23,11 @@ test('a heavy shot waits for a valid target, and lack of mana falls back to the 
   g.world.props=[];g.player.mana=10;assert.ok(g.shoot());assert.equal(g.projectiles[0].damage,14);assert.equal(g.player.mana,10);g.cancelCast();assert.equal(g.empowered,null);
 });
 test('Briarbind spreads from the impact, respects cover and never attacks neutral wildlife',()=>{
-  const g=game();const neutral={...g.creatures[0],id:'neutral',type:'barkjaw',x:1780};g.creatures.push(neutral);g.beginCast('5');assert.equal(g.creatures[0].root,0);g.shoot();advance(g,.3);
-  assert.ok(g.creatures.slice(0,2).every(c=>c.root>4));assert.equal(neutral.root,0);assert.equal(neutral.hp,40);assert.equal(g.creatures[1].hp,40,'spreading vines do not multiply the basic attack damage');
+  const g=game();const neutral={...g.creatures[0],id:'neutral',type:'barkjaw',x:1780,hp:100,maxHp:100},otherHp=g.creatures[1].hp;g.creatures.push(neutral);g.beginCast('5');assert.equal(g.creatures[0].root,0);g.shoot();advance(g,.3);
+  assert.ok(g.creatures.slice(0,2).every(c=>c.root>4));assert.equal(neutral.root,0);assert.equal(neutral.hp,100);assert.equal(g.creatures[1].hp,otherHp,'spreading vines do not multiply the basic attack damage');
 });
 test('Wildbloom is centered on the caster and shields refresh without stacking',()=>{
-  const g=game();g.creatures[1].x=1900;assert.ok(g.cast('3'));assert.equal(g.creatures[0].hp,0);assert.equal(g.creatures[1].hp,40);assert.equal(g.player.mana,52);
+  const g=game(),outsideHp=g.creatures[1].hp;g.creatures[1].x=1900;assert.ok(g.cast('3'));assert.equal(g.creatures[0].hp,0);assert.equal(g.creatures[1].hp,outsideHp);assert.equal(g.player.mana,52);
   assert.ok(g.cast('2'));assert.equal(g.player.shield,45);g.damagePlayer(30);assert.equal(g.player.shield,15);advance(g,1.6);g.player.mana=100;g.cast('2');assert.equal(g.player.shield,45);
 });
 test('Windrun changes actual movement speed for a finite duration without crossing scenery',()=>{
@@ -37,7 +37,7 @@ test('Windrun changes actual movement speed for a finite duration without crossi
 test('growth offers durable distinct builds, modest free level scaling and no free combat mana refill',()=>{
   const g=game();g.learned.clear();g.player.mana=3;g.reward(140);assert.equal(g.player.level,2);assert.equal(g.player.mana,3);assert.equal(g.unspentPoints,2);
   g.spendPoint('power');g.spendPoint('mana');assert.equal(g.player.maxMana,108);assert.ok(Math.abs(g.manaRegen-4.65)<1e-8);assert.ok(g.spellPower>1.03);assert.equal(g.unspentPoints,0);assert.equal(g.spendPoint('power'),false);
-  g.player.level=4;g.recalculate();assert.ok(g.basicDamage<16,'three free levels never double basic damage');
+  g.player.level=4;g.recalculate();assert.ok(g.basicDamage>17&&g.basicDamage<20,'three levels provide noticeable growth without doubling basic damage');
 });
 test('power extends control, shield and companion durations while healing stays bounded',()=>{
   const g=game();g.player.level=11;while(g.unspentPoints)g.spendPoint('power');g.player.mana=1000;g.cast('2');assert.ok(g.player.ward>10);g.player.mana=1000;g.cast('6');assert.ok(g.fox.time>25);

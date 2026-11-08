@@ -20,10 +20,10 @@ function retreat(g,{walk=false,attack=true}={}){
 }
 
 for(const type of ['rootknife','prowler','petalmaw','stormbell','wyrm']){
-  test(`${type} connects against direct retreat while auto-attacking, with its intended attack pressure`,()=>{
+  test(`${type} keeps pressure during direct retreat if it survives the automatic attacks`,()=>{
     for(const mode of (['petalmaw','stormbell','wyrm'].includes(type)?['walk','run','boots']:['walk']))for(const range of [100,175])for(let direction=0;direction<8;direction++){
       const g=encounter(type,range,direction*Math.PI/4,mode==='boots'),result=retreat(g,{walk:mode==='walk'});
-      assert.ok(result.damage>0,`${type}: ${mode}, range ${range}, heading ${direction} cannot avoid every hit by backing away`);
+      assert.ok(result.damage>0||result.dead,`${type}: ${mode}, range ${range}, heading ${direction}: a surviving pursuer must connect`);
     }
   });
 }

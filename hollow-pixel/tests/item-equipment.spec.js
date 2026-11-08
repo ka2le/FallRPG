@@ -1,16 +1,24 @@
 import {test,expect} from '@playwright/test';
 import {mkdir} from 'node:fs/promises';
-test('pixel gear, twelve slots, comparison, removal, saves and mobile layout work',async({page})=>{
+test('pixel gear, eight shared slots, comparison, drag and drop, removal, saves and mobile layout work',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/?test');await page.waitForFunction(()=>window.__hollow);
  await page.evaluate(async()=>{const {game:g}=window.__hollow,{NEW_GEAR}=await import('/src/items.js');g.autoAttack=false;g.player.invulnerable=999;g.player.level=12;g.learn('surge');g.learn('ward');for(const id of Object.keys(NEW_GEAR))g.awardItem(id);g.recalculate();});
- await page.keyboard.press('i');await page.locator('[data-char-tab="gear"]').click();await expect(page.locator('.doll-slot')).toHaveCount(12);await expect(page.locator('[data-equip="watchlens"] .item-sprite')).toHaveCount(1);
+ await page.keyboard.press('i');await page.locator('[data-char-tab="gear"]').click();await expect(page.locator('.doll-slot')).toHaveCount(8);await expect(page.locator('[data-equip="watchlens"] .item-sprite')).toHaveCount(1);
  await page.locator('[data-equip="watchlens"]').hover();await expect(page.locator('#game-tip')).toContainText('Willow Ward');await page.locator('[data-equip="watchlens"]').click();await expect(page.locator('[data-equip="watchlens"]')).toHaveAttribute('aria-pressed','true');
- await page.locator('.spell-stats summary').click();const ward=await page.evaluate(()=>Number(window.__hollow.game.spellValues('ward').shield.toFixed(1)).toString());await expect(page.locator('[data-tip-id="ward"] b')).toHaveText(ward);
- await page.getByRole('button',{name:'Remove Watchstone lens',exact:true}).click();await expect(page.locator('[data-equip="watchlens"]')).toHaveAttribute('aria-pressed','false');
+ await page.locator('.spell-stats summary').click();const ward=await page.evaluate(()=>Math.round(window.__hollow.game.spellValues('ward').shield).toString());await expect(page.locator('[data-tip-id="ward"] b')).toHaveText(ward);
+ await page.locator('[data-equip="watchlens"]').click();await expect(page.locator('[data-equip="watchlens"]')).toHaveAttribute('aria-pressed','false');
  await page.locator('[data-equip="watchlens"]').focus();await page.keyboard.press('Enter');await expect(page.locator('[data-equip="watchlens"]')).toHaveAttribute('aria-pressed','true');
- await page.evaluate(()=>window.__hollow.save());await page.reload();await page.waitForFunction(()=>window.__hollow);expect(await page.evaluate(()=>window.__hollow.game.equipment.focus)).toBe('watchlens');
- await page.keyboard.press('i');await page.locator('[data-char-tab="gear"]').click();await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/pixel-equipment-expanded.png'});
- await page.setViewportSize({width:390,height:844});await expect(page.locator('.doll-slot')).toHaveCount(12);expect(await page.locator('.char-modal').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);await page.screenshot({path:'artifacts/pixel-equipment-mobile.png'});expect(errors).toEqual([]);
+ await page.evaluate(()=>window.__hollow.save());await page.reload();await page.waitForFunction(()=>window.__hollow);expect(await page.evaluate(()=>window.__hollow.game.equipment.offhand)).toBe('watchlens');
+ await page.keyboard.press('i');await page.locator('[data-char-tab="gear"]').click();
+ const drag=async(from,to)=>{const a=await page.locator(from).boundingBox(),b=await page.locator(to).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(a.x+a.width/2+12,a.y+a.height/2+8,{steps:3});await page.mouse.move(b.x+b.width/2,b.y+Math.min(b.height/2,30),{steps:8});await page.mouse.up();};
+ await drag('[data-equip="amberloop"]','.s-trinket3');expect(await page.evaluate(()=>window.__hollow.game.equipment.trinket3)).toBe('amberloop');
+ await drag('[data-equip="dewloop"]','.s-trinket1');expect(await page.evaluate(()=>window.__hollow.game.equipment.trinket1)).toBe('dewloop');
+ await drag('.s-trinket3','.s-trinket1');expect(await page.evaluate(()=>[window.__hollow.game.equipment.trinket1,window.__hollow.game.equipment.trinket3])).toEqual(['amberloop','dewloop']);
+ await drag('[data-equip="amberloop"]','.s-head');expect(await page.evaluate(()=>window.__hollow.game.equipment.head)).toBeUndefined();
+ await drag('.s-trinket1','.bag');expect(await page.evaluate(()=>window.__hollow.game.equipment.trinket1)).toBeUndefined();
+ await expect(page.locator('.tile').first()).toHaveAttribute('aria-pressed','true');
+ await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/pixel-equipment-expanded.png'});
+ await page.setViewportSize({width:390,height:844});await expect(page.locator('.doll-slot')).toHaveCount(8);expect(await page.locator('.char-modal').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);await page.screenshot({path:'artifacts/pixel-equipment-mobile.png'});expect(errors).toEqual([]);
 });
 test('128 item drawings have real alpha and usable filters, PNG downloads and small-scale previews',async({page})=>{
  await page.goto('/item-library.html');await expect(page.locator('[data-sprite]')).toHaveCount(128);

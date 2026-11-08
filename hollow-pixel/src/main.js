@@ -1,7 +1,7 @@
 import './style.css';
 import './game-ui.css';
 import './skills-ui.css';
-import { Game, SAVE_KEY } from './game.js';
+import { Game, SAVE_KEY, interactRange } from './game.js';
 import { Renderer } from './render.js';
 import { UI, shell } from './ui.js';
 import { Soundscape } from './audio.js';
@@ -27,15 +27,27 @@ function save(manual=false){
 const ui=new UI(game,renderer,save),keys=new Set();
 const touch=new WorldTouchControls(canvas,{enabled:()=>!ui.modal&&!game.paused,tap:worldTap,getZoom:()=>renderer.zoom,setZoom:zoom=>renderer.setZoom(zoom),startMove:()=>{game.destination=null;game.route=[];}});
 ui.onPause=()=>{keys.clear();touch.reset();};
-const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',...SLOTS,'c',' ','h','enter','tab','j','k','m','i','escape'];
+const handled=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',...SLOTS,'c',' ','f','enter','tab','j','k','m','i','escape'];
+// Space interacts. When it opens a conversation, focus lands on a dialogue button; swallow the
+// matching keyup so the browser does not also "click" that button and close it again.
+let eatSpaceUp=false;
 function clearKeys(){keys.clear();touch.reset();}
+// I: items · K: spells (Character window) · J: quests · M: map (Journal window).
+function windowKey(k){
+  if(k==='i')ui.openCharacter('gear');else if(k==='k')ui.openCharacter('spells');
+  else if(k==='j')ui.openJournal('quests');else if(k==='m')ui.openJournal('map');else return false;
+  return true;
+}
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(k==='p'){e.preventDefault();if(!e.repeat)void printscreen();return;}
   if(ui.modal){
     if(k==='enter'&&document.activeElement?.matches('a[href], [data-fullscreen], .char button, .char select'))return;
-    if(k==='c'||k==='enter'){e.preventDefault();ui.advanceDialogue();return;}
+    if(k===' '&&ui.isConversation()){e.preventDefault();eatSpaceUp=true;if(!e.repeat)ui.advanceDialogue();return;}
+    if(k==='enter'){e.preventDefault();ui.advanceDialogue();return;}
     if(k==='escape'){e.preventDefault();ui.close();clearKeys();return;}
+    // Window keys still work while a window is open: switch tab, or close on a second press.
+    if(!e.repeat&&!ui.isConversation()&&windowKey(k)){e.preventDefault();return;}
     // Trap keyboard focus inside the open dialog.
     if(k==='tab'){const focusable=[...document.querySelectorAll('#modal-root button:not(:disabled), #modal-root select:not(:disabled), #modal-root a[href]')],current=focusable.indexOf(document.activeElement),next=e.shiftKey?(current<=0?focusable.length-1:current-1):(current+1)%focusable.length;e.preventDefault();focusable[next]?.focus();}
     return;
@@ -44,16 +56,16 @@ window.addEventListener('keydown',e=>{
   if(document.activeElement?.tagName==='BUTTON'&&(k===' '||k==='enter'))return;
   if(handled.includes(k))e.preventDefault();keys.add(k);if(e.repeat)return;
   if(SLOTS.includes(k))game.beginCast(k);
-  if(k==='c'||k==='enter')game.interact();if(k==='h')game.tonic();if(k==='tab')game.cycleTarget();
-  if(k===' ')game.toggleAutoAttack();
-  if(k==='i'){clearKeys();ui.openCharacter('gear');}if(k==='j'){clearKeys();ui.open('journal');}if(k==='k'){clearKeys();ui.openCharacter('spells');}if(k==='m'){clearKeys();ui.open('map');}if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
+  if(k===' '){eatSpaceUp=true;game.interact();}if(k==='enter')game.interact();if(k==='f')game.tonic();if(k==='tab')game.cycleTarget();
+  if(k==='c')game.toggleAutoAttack();
+  if(windowKey(k))clearKeys();if(k==='escape'){clearKeys();if(game.aiming)game.cancelCast();else ui.open('pause');}
 });
-window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys.delete(k);if(k===' '&&eatSpaceUp){eatSpaceUp=false;e.preventDefault();}});
 window.addEventListener('blur',()=>{clearKeys();if(!ui.modal)ui.open('pause');save();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearKeys();save();if(!ui.modal)ui.open('pause');}});
 window.addEventListener('beforeunload',()=>save());
-canvas.addEventListener('pointermove',e=>{const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);renderer.hover=hit?.id||null;game.pointer=point;canvas.style.cursor=game.aiming?'crosshair':hit?'pointer':'default';});
-canvas.addEventListener('pointerleave',()=>renderer.hover=null);
+canvas.addEventListener('pointermove',e=>{const point=renderer.world(e.clientX,e.clientY),hit=renderer.hitCreature(point);renderer.hover=hit?.id||null;game.pointer=point;const spot=!hit&&!game.aiming?renderer.hitInteractable(point):null;renderer.hoverSpot=spot?.id||null;canvas.style.cursor=game.aiming?'crosshair':hit||spot?'pointer':'default';});
+canvas.addEventListener('pointerleave',()=>{renderer.hover=null;renderer.hoverSpot=null;});
 function worldTap(clientX,clientY){
   if(ui.modal||game.paused)return;
   const point=renderer.world(clientX,clientY),hit=renderer.hitCreature(point);
@@ -63,7 +75,7 @@ function worldTap(clientX,clientY){
   else {
     const near=renderer.hitInteractable(point);
     if(near){
-      if(Math.hypot(near.x-game.player.x,near.y-game.player.y)>=(near.kind==='npc'?65:48)){ui.toast('Move closer to interact.');return;}
+      if(Math.hypot(near.x-game.player.x,near.y-game.player.y)>=interactRange(near)){game.walkToInteract(near);return;}
       game.target=null;game.destination=null;game.route=[];game.nearby=near;game.interact();
     }
   }
@@ -84,7 +96,7 @@ try{
   function frame(now){const dt=Math.min((now-last)/1000,.05);last=now;
     if(capturing){requestAnimationFrame(frame);return;}
     game.update(dt,{left:keys.has('a')||keys.has('arrowleft'),right:keys.has('d')||keys.has('arrowright'),up:keys.has('w')||keys.has('arrowup'),down:keys.has('s')||keys.has('arrowdown'),x:touch.movement.x,y:touch.movement.y,run:keys.has('shift')});
-    for(const e of game.events.splice(0)){if(e.type==='new-journey'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(new Game().snapshot()));restarting=true;location.reload();return;}catch{ui.toast('Could not replace the local save.');}}ui.handleEvent(e);sound.event(e);}renderer.draw(dt);ui.tick(dt);if(!game.paused)sound.update(dt);
+    for(const e of game.events.splice(0)){if(e.type==='new-journey'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(new Game().snapshot()));restarting=true;location.reload();return;}catch{ui.toast('Could not replace the local save.');}}ui.handleEvent(e);sound.event(e);}renderer.draw(dt);ui.tick(dt);if(!game.paused)sound.update(dt,game);
     if(now-lastSave>12000&&!game.paused)save();requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

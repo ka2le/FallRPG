@@ -9,8 +9,18 @@ test('a fresh apprentice earns two skill points and a wand, then chooses the fir
   const g=new Game();assert.deepEqual([...g.stances],['ember']);assert.equal(g.learned.size,0);assert.equal(g.cast('f'),false);assert.equal(g.beginCast('q'),false);assert.equal(g.setStance('siphon'),false);assert.equal(g.learn('ward'),false);
   pasture(g);assert.equal(g.player.level,2);assert.equal(g.learned.size,0);assert.equal(g.unspentPoints,2);assert.ok(g.learn('surge'));assert.equal(g.unspentPoints,1);assert.equal(g.bindings.q,'surge');assert.ok(g.inventory.includes('reedstaff'));const before=g.spellPower;assert.ok(g.equip('reedstaff'));assert.ok(g.spellPower>before+.09);assert.equal(g.quests['briar-road'],'offered');assert.equal(g.questAction('herd'),false);
 });
-test('lessons require a level, prerequisite and skill point; learning works away from town without coins',()=>{
-  const g=new Game();pasture(g);g.player.coins=0;Object.assign(g.player,{x:800,y:430});assert.equal(g.learn('ward'),false);assert.ok(g.learn('surge'));assert.equal(g.learn('ward'),false);g.player.level=3;g.recalculate();assert.equal(g.learn('siphon'),false);assert.ok(g.learn('ward'));assert.equal(g.player.coins,0);assert.equal(g.unspentPoints,2);assert.equal(g.learn('ward'),false);const h=new Game(g.snapshot());assert.deepEqual(h.snapshot(),g.snapshot());assert.ok(h.learned.has('ward'));
+test('lessons require a level and a skill point, in any order; learning works away from town without coins',()=>{
+  const g=new Game();pasture(g);g.player.coins=0;Object.assign(g.player,{x:800,y:430});assert.equal(g.player.level,2);
+  assert.equal(g.learn('nova'),false,'Nova needs level 4');assert.ok(g.learn('ward'),'Ward no longer needs Aether Lance first');assert.equal(g.learned.has('surge'),false);
+  assert.ok(g.learn('surge'));assert.equal(g.unspentPoints,0);assert.equal(g.learn('ward'),false);
+  g.player.level=6;g.recalculate();assert.equal(g.learn('siphon'),false);assert.ok(g.learn('renew'),'Renew without Haste');assert.ok(g.learn('haste'));assert.ok(g.learn('nova'));
+  assert.equal(g.learn('bind'),false,'Briarbind needs level 8');assert.equal(g.player.coins,0);assert.equal(g.unspentPoints,5);
+  const h=new Game(g.snapshot());assert.deepEqual(h.snapshot(),g.snapshot());assert.ok(h.learned.has('renew'));
+});
+test('every spell unlocks one level earlier than before, with no prerequisites',async()=>{
+  const {LESSONS}=await import('../src/adventure.js');
+  assert.deepEqual(Object.fromEntries(Object.entries(LESSONS).map(([id,l])=>[id,l.level])),{surge:1,ward:2,nova:4,haste:6,renew:6,bind:8,fox:10});
+  assert.ok(Object.values(LESSONS).every(l=>!l.requires));
 });
 test('bounties require every camp and pay equipment and gold exactly once',()=>{
   const g=new Game();pasture(g);assert.ok(g.questAction('briar-road'));assert.equal(g.questAction('briar-road'),false);
@@ -25,9 +35,16 @@ test('all authored camps spawn in full, follow clear paths and have fixed threat
   const g=new Game();for(const camp of ENCOUNTERS){const enemies=g.creatures.filter(c=>c.camp===camp.id);assert.equal(enemies.length,camp.types.length,camp.id);assert.ok(enemies.every(c=>c.level===camp.level));assert.ok(enemies.every(c=>canWalk(g.world,c.x,c.y,8)));}
   const staticTerrain={...g.world,rootwallLive:false};
   for(const path of ADVENTURE_PATHS)for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],d=dist(a,b);for(let n=0;n<=d;n+=8)assert.ok(canWalk(staticTerrain,a.x+(b.x-a.x)*n/d,a.y+(b.y-a.y)*n/d,8),`${a.x},${a.y} → ${b.x},${b.y} at ${n}`);}
-  const early=g.creatures.find(c=>c.quest==='herd'),late=g.creatures.find(c=>c.camp==='last-lantern'&&c.elite);assert.ok(late.damage>early.damage*5);assert.ok(late.maxHp>early.maxHp*8);g.player.level=12;g.recalculate();assert.equal(late.level,12);assert.equal(early.level,1,'monsters do not scale to the player');
+  const early=g.creatures.find(c=>c.quest==='herd'),late=g.creatures.find(c=>c.camp==='last-lantern'&&c.elite);assert.ok(late.damage>early.damage*5);assert.ok(late.maxHp>early.maxHp*5);g.player.level=12;g.recalculate();assert.equal(late.level,12);assert.equal(early.level,1,'monsters do not scale to the player');
 });
 test('an entire bounty chain has reachable rewards without requiring repeated turn-ins',()=>{
   const g=new Game();pasture(g);for(const h of HUNTS.filter(h=>!h.id.startsWith('road-'))){assert.ok(g.questAction(h.id),h.id);for(const c of g.creatures.filter(c=>h.camps.some(camp=>camp.id===c.camp)))g.hurt(c,99999);assert.ok(g.questAction(h.id));g.equip(h.item);}
   assert.ok(g.player.level>=11);assert.equal(g.equipment.weapon,'crownstaff');assert.ok(g.spellPower>1.5);assert.equal(g.inventory.filter(id=>id==='crownstaff').length,1);assert.ok(GEAR.crownstaff.stats.damage>GEAR.reedstaff.stats.damage);
+});
+test('offered quests stay out of the quest UI until their giver has told you about them',async()=>{
+  const {questList,knownQuests}=await import('../src/quests.js');
+  const g=new Game();assert.equal(knownQuests(g).length,0);assert.ok(questList(g).some(q=>q.id==='herd'));
+  assert.ok(g.seeQuest('herd'));assert.equal(g.seeQuest('herd'),false);assert.deepEqual(knownQuests(g).map(q=>q.id),['herd']);
+  pasture(g);assert.ok(!knownQuests(g).some(q=>q.id==='briar-road'));assert.ok(knownQuests(g).some(q=>q.id==='herd'&&q.state==='complete'));
+  const h=new Game(g.snapshot());assert.ok(h.seenQuests.has('herd'));
 });

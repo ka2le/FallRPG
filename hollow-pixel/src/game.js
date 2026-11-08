@@ -1,6 +1,6 @@
 import { SPECIES, SPELL_BY_ID, SLOTS, QUESTS, PLACES, STANCES, DEFAULT_BINDINGS, ACTIVE_SPELL_IDS } from './data.js';
 import { ATTRIBUTES, PROGRESSION_VERSION, pointsAtLevel, xpForLevel, attributesFor, playerStats } from './progression.js';
-import { EQUIPMENT_SLOTS,EXTRA_REWARDS } from './items.js';
+import { EQUIPMENT_SLOTS,EXTRA_REWARDS,SLOT_ACCEPTS,slotsForType } from './items.js';
 import { markDefeated, visitHaven, tryRespawn, RESPAWN } from './respawns.js';
 import { expansionEcology } from './ecology-expansion.js';
 import { updateAmbient } from './ambient.js';
@@ -10,11 +10,14 @@ import { findRoute } from './navigation.js';
 import { spreadCombatants } from './crowd.js';
 import { OPENING_LAYOUT_VERSION } from './opening.js';
 import { effectiveSpell, SPELL_UPGRADES } from './spell-effects.js';
+import { wholeNumber } from './display-numbers.js';
 import { attachRootwalls,updateRootwalls,saveRootwalls,restoreRootwalls } from './rootwalls.js';
-import { GEAR, LESSONS, HUNTS, ENCOUNTERS, creatureStats } from './adventure.js';
+import { GEAR, LESSONS, HUNTS, ENCOUNTERS, creatureStats, legacyCreatureMaxHp } from './adventure.js';
 import { createWorld, HOME, MIN_X, MIN_Y, MAX_X, MAX_Y, biomeAt, seamX, dist, clamp, canWalk, moveBody, lineClear, inVillage, propsNear } from './world.js';
 
 export const SAVE_KEY='hollow-between-seasons-v1';
+// How close you must be to use something. Market stalls are wide, so you can trade from anywhere along the counter.
+export const interactRange=i=>i.kind==='npc'?65:i.kind==='market'?72:48;
 export class Game {
   constructor(saved=null,{world=null}={}){
     this.world=world||createWorld();this.time=0;this.paused=false;this.events=[];this.effects=[];this.projectiles=[];this.floaters=[];this.treeAttacks=new Map();
@@ -22,7 +25,7 @@ export class Game {
     this.creatures=this.world.creatures.map(c=>{const stats=creatureStats(c,SPECIES[c.type]);return {...c,...stats,hp:stats.maxHp,face:1,moving:false,walk:0,attack:1,windup:0,root:0,stun:0,slow:0,aggro:false,flash:0,dead:false,state:'wandering'};});
     attachRootwalls(this);
     this.learned=new Set();this.stances=new Set(['ember']);this.inventory=['twig','wraps'];this.equipment={weapon:'twig',robe:'wraps'};this.gear={};this.cleared=new Set();this.potionCooldown=0;
-    this.bindings={...DEFAULT_BINDINGS};this.attributes=attributesFor();this.spellUpgrades=new Set();this.skillCredit=0;this.empowered=null;this.autoSurge=false;this.wasSafe=true;this.cooldowns={};this.observed=new Set();this.visited=new Set(['village']);this.defeated=new Set();
+    this.bindings={...DEFAULT_BINDINGS};this.attributes=attributesFor();this.spellUpgrades=new Set();this.skillCredit=0;this.empowered=null;this.autoSurge=false;this.wasSafe=true;this.cooldowns={};this.observed=new Set();this.visited=new Set(['village']);this.defeated=new Set();this.seenQuests=new Set();
     this.quests={herd:'offered',seasons:'locked',seam:'locked'};this.crossingOpen=false;this.target=null;this.autoAttack=true;this.stance='ember';this.aiming=null;this.pointer={x:HOME.x,y:HOME.y-80};this.world.barriers=[];this.safeZonesEnabled=true;this.destination=null;this.route=[];this.nearby=null;this.currentPlace='village';this.stepTimer=0;this.fox=null;this.boltCooldown=0;this.dirty=false;
     for(const hunt of HUNTS)this.quests[hunt.id]='locked';
     if(saved)this.restore(saved);
@@ -62,8 +65,17 @@ export class Game {
   recalculate(){this.gear={};for(const id of Object.values(this.equipment))for(const [key,value] of Object.entries(GEAR[id]?.stats||{}))this.gear[key]=(this.gear[key]||0)+value;const p=this.player,stats=this.stats;p.maxHp=stats.maxHp;p.maxMana=stats.maxMana;p.hp=Math.min(p.hp,p.maxHp);p.mana=Math.min(p.mana,p.maxMana);}
   spendPoint(id){if(id==='capacity'||id==='recovery')id='mana';if(!ATTRIBUTES[id]||this.unspentPoints<=0)return false;this.attributes[id]++;this.recalculate();this.dirty=true;return true;}
   toggleAutoSurge(){if(!this.learned.has('surge'))return false;this.autoSurge=!this.autoSurge;this.dirty=true;return true;}
-  toggleAutoAttack(){this.autoAttack=!this.autoAttack;this.dirty=true;this.toast(this.autoAttack?'Automatic basic attacks on.':'Automatic attacks paused. Press Space or select an enemy to resume.');return this.autoAttack;}
-  equip(id){if(!this.inventory.includes(id)||!GEAR[id])return false;this.equipment[GEAR[id].slot]=id;this.recalculate();this.dirty=true;return true;}
+  // An offered quest only enters the quest UI once its giver has actually told you about it.
+  seeQuest(id){if(this.seenQuests.has(id))return false;this.seenQuests.add(id);this.dirty=true;return true;}
+  toggleAutoAttack(){this.autoAttack=!this.autoAttack;this.dirty=true;this.toast(this.autoAttack?'Automatic basic attacks on.':'Automatic attacks paused. Press C or select an enemy to resume.');return this.autoAttack;}
+  // Where an item goes: the slot it already occupies, a free fitting slot, or the first fitting slot.
+  slotFor(id){const ok=slotsForType(GEAR[id]?.slot);return ok.find(s=>this.equipment[s]===id)||ok.find(s=>!this.equipment[s])||ok[0];}
+  wornSlot(id){return EQUIPMENT_SLOTS.find(s=>this.equipment[s]===id);}
+  equippedOfType(type){return EQUIPMENT_SLOTS.map(s=>this.equipment[s]).find(id=>GEAR[id]?.slot===type);}
+  equip(id,slot){if(!this.inventory.includes(id)||!GEAR[id])return false;slot=slot||this.slotFor(id);if(!SLOT_ACCEPTS[slot]?.includes(GEAR[id].slot))return false;
+    const from=this.wornSlot(id);if(from===slot)return true;const displaced=this.equipment[slot];
+    if(from){if(displaced)this.equipment[from]=displaced;else delete this.equipment[from];}
+    this.equipment[slot]=id;this.recalculate();this.dirty=true;return true;}
   unequip(slot){if(!EQUIPMENT_SLOTS.includes(slot)||!this.equipment[slot])return false;delete this.equipment[slot];this.recalculate();this.dirty=true;return true;}
   spellCooldown(id){return SPELL_BY_ID[id].cooldown*(1-this.stats.cooldownReduction);}
   grantExtraRewards(id,announce=true){for(const item of EXTRA_REWARDS[id]||[])if(!this.inventory.includes(item)){if(announce)this.awardItem(item);else this.inventory.push(item);}}
@@ -126,10 +138,10 @@ export class Game {
     if(c.dead)return;engageGroup(this,c);c.hp=Math.max(0,c.hp-damage);c.flash=.2;this.floater(String(Math.round(damage)),c.x,c.y-30,color);this.effect('hit',c.x,c.y-17,color,{life:.25});
     if(c.hp<=0){c.dead=true;markDefeated(this,c);c.aggro=false;this.defeated.add(c.id);this.reward(c.xp||20);this.player.coins+=c.coins||4;if(this.target===c.id)this.target=null;this.emit('death',{id:c.id,species:c.type});this.dirty=true;if(c.camp&&!this.cleared.has(c.camp)&&this.creatures.filter(a=>a.camp===c.camp).every(a=>a.dead)){this.cleared.add(c.camp);this.toast(`Cleared ${ENCOUNTERS.find(a=>a.id===c.camp)?.name}. Check your journal for the next camp.`,'quest');}if(c.quest==='herd'&&this.herdCleared){this.toast('Return to Rowan.','quest');this.emit('quest');}}
   }
-  damagePlayer(amount){const p=this.player;if(p.invulnerable>0||this.isSafe)return;amount=Math.max(1,Math.round(amount*(1-Math.min(.6,this.gear.armor||0))));let absorbed=Math.min(p.shield,amount);p.shield-=absorbed;amount-=absorbed;if(absorbed)this.floater(`−${absorbed} WARD`,p.x,p.y-42,'#e4ca84');if(amount){const lost=Math.min(p.hp,amount);p.hp=Math.max(0,p.hp-amount);this.emit('player-damage',{amount:lost});this.floater(`−${amount}`,p.x,p.y-24,'#f0a196');this.emit('hurt');}if(!p.hp)this.respawn();}
-  reward(xp){const p=this.player;p.xp+=xp;while(p.level<50&&p.xp>=xpForLevel(p.level)){p.xp-=xpForLevel(p.level);p.level++;this.recalculate();p.hp=Math.min(p.maxHp,p.hp+8);this.toast(`Level ${p.level}. Spend 2 skill points in Character (I).`,'quest');this.effect('ring',p.x,p.y,'#e6cf89',{radius:90,life:1.5});}this.dirty=true;}
+  damagePlayer(amount){const p=this.player;if(p.invulnerable>0||this.isSafe)return;amount=Math.max(1,Math.round(amount*(1-Math.min(.6,this.gear.armor||0))));let absorbed=Math.min(p.shield,amount);p.shield-=absorbed;amount-=absorbed;if(absorbed)this.floater(`−${wholeNumber(absorbed)} WARD`,p.x,p.y-42,'#e4ca84');if(amount){const lost=Math.min(p.hp,amount);p.hp=Math.max(0,p.hp-amount);this.emit('player-damage',{amount:lost});this.floater(`−${wholeNumber(amount)}`,p.x,p.y-24,'#f0a196');this.emit('hurt');}if(!p.hp)this.respawn();}
+  reward(xp){const p=this.player;p.xp+=xp;while(p.level<50&&p.xp>=xpForLevel(p.level)){p.xp-=xpForLevel(p.level);p.level++;this.recalculate();p.hp=Math.min(p.maxHp,p.hp+8);this.effect('ring',p.x,p.y,'#e6cf89',{radius:90,life:1.5});}this.dirty=true;}
   respawn(){const p=this.player;Object.assign(p,HOME,{hp:p.maxHp,mana:p.maxMana,shield:0,ward:0,renew:0,haste:0,invulnerable:3});this.target=null;this.cancelCast();this.fox=null;this.destination=null;this.route=[];this.projectiles=[];this.world.barriers=[];this.treeAttacks.clear();for(const c of this.creatures)if(!c.dead&&c.aggro)beginReturn(c);visitHaven(this);this.wasSafe=true;this.dirty=true;this.toast('The Hearthstone calls you home. Your discoveries are safe.','quest');this.emit('respawn');}
-  tonic(){if(this.paused)return;if(this.potionCooldown>0){this.toast(`Tonic ready in ${Math.ceil(this.potionCooldown)}s.`);return;}if(this.player.tonics<=0){this.toast('No tonics left. Gather sprigs and visit the market.');return;}if(this.player.hp>=this.player.maxHp){this.toast('You are already in good health.');return;}this.player.tonics--;this.potionCooldown=8;this.player.hp=Math.min(this.player.maxHp,this.player.hp+this.stats.tonicHealing);this.floater(`+${this.stats.tonicHealing}`,this.player.x,this.player.y-30,'#b9d48e');this.effect('ring',this.player.x,this.player.y,'#b9d48e',{radius:25});this.dirty=true;}
+  tonic(){if(this.paused)return;if(this.potionCooldown>0){this.toast(`Tonic ready in ${Math.ceil(this.potionCooldown)}s.`);return;}if(this.player.tonics<=0){this.toast('No tonics left. Gather sprigs and visit the market.');return;}if(this.player.hp>=this.player.maxHp){this.toast('You are already in good health.');return;}this.player.tonics--;this.potionCooldown=8;this.player.hp=Math.min(this.player.maxHp,this.player.hp+this.stats.tonicHealing);this.floater(`+${wholeNumber(this.stats.tonicHealing)}`,this.player.x,this.player.y-30,'#b9d48e');this.effect('ring',this.player.x,this.player.y,'#b9d48e',{radius:25});this.dirty=true;}
   observe(c){if(!c||c.dead)return;if(dist(this.player,c)>115){this.toast('Move closer to observe this creature.');return;}if(!this.observed.has(c.type)){this.observed.add(c.type);this.reward(12);this.toast(`Field note added: ${SPECIES[c.type].name}.`,'discovery');this.emit('observation',{species:c.type});}else this.toast(SPECIES[c.type].note);this.dirty=true;}
   interact(){
     if(this.paused)return;
@@ -164,6 +176,7 @@ export class Game {
       this.refreshHunts();this.emit('quest');this.dirty=true;return true;}return false;
   }
   buyTonic(mode){const p=this.player;if(mode==='herbs'&&p.herbs>=3){p.herbs-=3;p.tonics++;this.dirty=true;this.toast('Three sprigs for one fresh tonic.');return true;}if(mode==='coins'&&p.coins>=12){p.coins-=12;p.tonics++;this.dirty=true;this.toast('One tonic, wrapped for the road.');return true;}this.toast(mode==='herbs'?'You need three sprigs.':'You need 12 amber coins.');return false;}
+  walkToInteract(i){this.target=null;this.navigateTo(i.x,i.y);if(this.route.length)this.pendingInteract=i.id;}
   navigateTo(x,y){
     if(!canWalk(this.world,x,y)){this.toast('That ground is not passable.');return;}
     const route=findRoute(this.world,this.player,{x,y});
@@ -199,7 +212,7 @@ export class Game {
     for(const id in this.cooldowns)this.cooldowns[id]=Math.max(0,this.cooldowns[id]-dt);
     let dx=(input.right?1:0)-(input.left?1:0),dy=(input.down?1:0)-(input.up?1:0),running=input.run,routeDistance=null;
     if(!dx&&!dy){dx=Number.isFinite(input.x)?input.x:0;dy=Number.isFinite(input.y)?input.y:0;running||=!!(dx||dy);}
-    if(dx||dy){this.destination=null;this.route=[];}else if(this.route.length){const next=this.route[0],d=dist(p,next);if(d<.5)this.route.shift();else {dx=(next.x-p.x)/d;dy=(next.y-p.y)/d;routeDistance=d;}if(!this.route.length)this.destination=null;}
+    if(dx||dy){this.destination=null;this.route=[];this.pendingInteract=null;}else if(this.route.length){const next=this.route[0],d=dist(p,next);if(d<.5)this.route.shift();else {dx=(next.x-p.x)/d;dy=(next.y-p.y)/d;routeDistance=d;}if(!this.route.length)this.destination=null;}
     const length=Math.hypot(dx,dy);p.moving=length>0;
     if(length){const scale=Math.max(1,length);dx/=scale;dy/=scale;p.dx=dx;p.dy=dy;p.direction=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');if(Math.abs(dx)>.1)p.face=dx>0?1:-1;let speed=(running?112:80)*(1+(this.gear.speed||0))*(p.haste>0?(p.hasteSpeed||1.75):1);if(routeDistance!==null)speed=Math.min(speed,routeDistance/Math.max(dt,.001));moveBody(this.world,p,dx*dt*speed,dy*dt*speed,routeDistance===null?8:9);p.walk+=dt*(running?10:7)*Math.min(1,length);}
     updateAmbient(this.world,p,this.time,dt);const playerSafe=this.isSafe;
@@ -244,7 +257,9 @@ export class Game {
     this.projectiles=this.projectiles.filter(s=>!s.done);
     for(const group of [this.effects,this.floaters]){for(const e of group)e.age+=dt;for(let i=group.length-1;i>=0;i--)if(group[i].age>=group[i].life)group.splice(i,1);}
     for(const npc of this.world.interactables)if(npc.roaming){npc.moving=false;const goal={x:npc.homeX+Math.sin(this.time*.12)*35,y:npc.homeY+Math.cos(this.time*.09)*18};if((this.time%16)>6)this.walkCreature(npc,goal,dt,13);}
-    this.nearby=this.world.interactables.filter(i=>!i.collected&&dist(i,p)<(i.kind==='npc'?65:48)).sort((a,b)=>dist(a,p)-dist(b,p))[0]||null;
+    this.nearby=this.world.interactables.filter(i=>!i.collected&&dist(i,p)<interactRange(i)).sort((a,b)=>dist(a,p)-dist(b,p))[0]||null;
+    // Clicking something far away walks there and uses it on arrival.
+    if(this.pendingInteract){if(this.nearby?.id===this.pendingInteract){this.pendingInteract=null;this.destination=null;this.route=[];p.moving=false;this.interact();}else if(!this.route.length)this.pendingInteract=null;}
     for(const place of PLACES)if(dist(p,place)<135){this.currentPlace=place.id;if(!this.visited.has(place.id)){this.visited.add(place.id);this.reward(20);this.emit('place',{place});this.dirty=true;}}
     this.updateTreeAttacks();
   }
@@ -283,7 +298,7 @@ export class Game {
     c.state=c.type==='mantleback'?'turning leaf litter':c.type==='snowkeel'?'feeding beneath snow':c.type==='antler'?'tending antler gardens':cycle<6?'resting':'wandering';
     if(cycle>6){const goal={x:c.homeX+Math.sin(this.time*.06+c.phase)*65,y:c.homeY+Math.cos(this.time*.047+c.phase)*45};if(s.neutral&&c.type!=='scavenger'&&biomeAt(goal.x,goal.y)!==s.habitat)return;this.walkCreature(c,goal,dt,s.speed*.43);}
   }
-  snapshot(){const p=this.player;return {version:1,equipmentVersion:1,worldLayout:2,openingLayout:OPENING_LAYOUT_VERSION,combatVersion:3,rpgVersion:PROGRESSION_VERSION,time:this.time,attributes:{...this.attributes},spellUpgrades:[...this.spellUpgrades],skillCredit:this.skillCredit,autoSurge:this.autoSurge,cooldowns:{...this.cooldowns},boltCooldown:this.boltCooldown,enemyStates:this.creatures.filter(c=>!c.dead&&(c.hp<c.maxHp||c.aggro||c.returning||c.provoked)).map(c=>({id:c.id,x:c.x,y:c.y,hp:c.hp,aggro:!!c.aggro,returning:!!c.returning,provoked:!!c.provoked,root:Math.max(0,c.root),stun:Math.max(0,c.stun),slow:Math.max(0,c.slow),attack:Math.max(0,c.attack),windup:Math.max(0,c.windup),pursuitTime:Math.max(0,c.pursuitTime||0),anchor:c.aggroAnchor?{...c.aggroAnchor}:null})),respawns:this.creatures.filter(c=>c.dead).map(c=>({id:c.id,deadAt:c.deadAt,respawnAt:c.respawnAt,returnedHome:c.returnedHome})),rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
+  snapshot(){const p=this.player;return {version:1,equipmentVersion:1,worldLayout:2,openingLayout:OPENING_LAYOUT_VERSION,combatVersion:4,rpgVersion:PROGRESSION_VERSION,time:this.time,attributes:{...this.attributes},spellUpgrades:[...this.spellUpgrades],skillCredit:this.skillCredit,autoSurge:this.autoSurge,cooldowns:{...this.cooldowns},boltCooldown:this.boltCooldown,enemyStates:this.creatures.filter(c=>!c.dead&&(c.hp<c.maxHp||c.aggro||c.returning||c.provoked)).map(c=>({id:c.id,x:c.x,y:c.y,hp:c.hp,maxHp:c.maxHp,aggro:!!c.aggro,returning:!!c.returning,provoked:!!c.provoked,root:Math.max(0,c.root),stun:Math.max(0,c.stun),slow:Math.max(0,c.slow),attack:Math.max(0,c.attack),windup:Math.max(0,c.windup),pursuitTime:Math.max(0,c.pursuitTime||0),anchor:c.aggroAnchor?{...c.aggroAnchor}:null})),respawns:this.creatures.filter(c=>c.dead).map(c=>({id:c.id,deadAt:c.deadAt,respawnAt:c.respawnAt,returnedHome:c.returnedHome})),rootwalls:saveRootwalls(this),learned:[...this.learned],stances:[...this.stances],inventory:[...this.inventory],equipment:{...this.equipment},cleared:[...this.cleared],potionCooldown:this.potionCooldown,stance:this.stance,autoAttack:this.autoAttack,player:{x:p.x,y:p.y,hp:p.hp,mana:p.mana,level:p.level,xp:p.xp,tonics:p.tonics,herbs:p.herbs,coins:p.coins},bindings:{...this.bindings},observed:[...this.observed],seenQuests:[...this.seenQuests],visited:[...this.visited],defeated:[...this.defeated],quests:{...this.quests},crossingOpen:this.crossingOpen,harvested:this.world.interactables.filter(i=>i.collected).map(i=>i.id)};}
   restore(s){
     if(s?.version!==1)return;const p=this.player,d=s.player||{};
     for(const key of ['level','xp','tonics','herbs','coins'])if(Number.isFinite(d[key]))p[key]=clamp(Math.floor(d[key]),key==='level'?1:0,key==='level'?50:9999);
@@ -297,13 +312,15 @@ export class Game {
     // Pausing basic fire lasts for this session. Reopening a journey resumes
     // automatic combat, including older saves with a silently disabled toggle.
     this.autoAttack=true;
-    this.observed=new Set((Array.isArray(s.observed)?s.observed:[]).filter(id=>SPECIES[id]));this.visited=new Set((Array.isArray(s.visited)?s.visited:[]).filter(id=>PLACES.some(p=>p.id===id)));
+    this.observed=new Set((Array.isArray(s.observed)?s.observed:[]).filter(id=>SPECIES[id]));this.seenQuests=new Set((Array.isArray(s.seenQuests)?s.seenQuests:[]).filter(id=>typeof id==='string'));this.visited=new Set((Array.isArray(s.visited)?s.visited:[]).filter(id=>PLACES.some(p=>p.id===id)));
     for(const q of QUESTS)if(['locked','offered','active','complete'].includes(s.quests?.[q.id]))this.quests[q.id]=s.quests[q.id];
     if(s.rpgVersion===1||s.rpgVersion===2||s.rpgVersion===PROGRESSION_VERSION){
       const migration={bind:'surge',bramble:'bind',frost:'nova',wave:'nova',blink:'haste',siphon:'renew'};
       this.learned=new Set((Array.isArray(s.learned)?s.learned:[]).map(id=>s.rpgVersion===1?(migration[id]||id):id).filter(id=>ACTIVE_SPELL_IDS.includes(id)));
       this.inventory=[...new Set(['twig','wraps',...(Array.isArray(s.inventory)?s.inventory:[]).filter(id=>GEAR[id])])];
-      for(const [slot,id] of Object.entries(s.equipment||{}))if(GEAR[id]?.slot===slot&&this.inventory.includes(id))this.equipment[slot]=id;
+      for(const [slot,id] of Object.entries(s.equipment||{})){if(!GEAR[id]||!this.inventory.includes(id)||Object.values(this.equipment).includes(id))continue;
+        // Older saves used one slot per item type; move those items into the new shared slots.
+        const target=SLOT_ACCEPTS[slot]?.includes(GEAR[id].slot)?slot:slotsForType(GEAR[id].slot).find(k=>!this.equipment[k]);if(target)this.equipment[target]=id;}
       this.cleared=new Set((Array.isArray(s.cleared)?s.cleared:[]).filter(id=>ENCOUNTERS.some(c=>c.id===id)));
       this.potionCooldown=Number.isFinite(s.potionCooldown)?clamp(s.potionCooldown,0,8):0;
     }else{
@@ -340,7 +357,10 @@ export class Game {
       const relocated=openingMoved&&(c.openingArea||c.rootwall==='briar-march');
       const home={x:c.homeX,y:c.homeY},pressure=enemyPressure(c,SPECIES[c.type],p.level);
       if(!relocated&&Number.isFinite(state.x)&&Number.isFinite(state.y)&&dist(state,home)<=pressure.homeLeash+600&&canWalk(this.world,state.x,state.y,c.solid||5,c)){c.x=state.x;c.y=state.y;}
-      if(Number.isFinite(state.hp))c.hp=clamp(state.hp,1,c.maxHp);
+      if(Number.isFinite(state.hp)){
+        const before=Number.isFinite(state.maxHp)&&state.maxHp>0?state.maxHp:s.combatVersion<4?legacyCreatureMaxHp(c,SPECIES[c.type]):c.maxHp;
+        c.hp=clamp(before===c.maxHp?state.hp:state.hp*c.maxHp/before,1,c.maxHp);
+      }
       for(const field of ['root','stun','slow','attack','windup','pursuitTime'])if(Number.isFinite(state[field]))c[field]=clamp(state[field],0,120);
       c.returning=state.returning===true;c.aggro=state.aggro===true&&!c.returning;c.provoked=!!SPECIES[c.type].rootwall&&state.provoked===true&&!c.returning;
       c.aggroAnchor=Number.isFinite(state.anchor?.x)&&Number.isFinite(state.anchor?.y)&&dist(state.anchor,home)<=pressure.homeLeash+GROUP_AGGRO_RADIUS+1?{x:state.anchor.x,y:state.anchor.y}:null;

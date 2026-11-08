@@ -16,9 +16,12 @@ export function attributesFor(saved={},level=1,reserved=0){
   return result;
 }
 export function playerStats(level,attributes,gear={}){
-  const power=1+(level-1)*.012+(attributes.power||0)*.05+(gear.power||0);
+  // The first few levels must matter even when points buy mana or new tools.
+  // Growth slows after level six; the wilderness keeps its fixed enemy levels.
+  const steps=Math.max(0,level-1),levelPower=Math.min(steps,5)*.06+Math.max(0,steps-5)*.03;
+  const power=1+levelPower+(attributes.power||0)*.05+(gear.power||0);
   return {
-    maxHp:120+(level-1)*4+(gear.health||0),
+    maxHp:120+(level-1)*8+(gear.health||0),
     maxMana:100+(attributes.mana||0)*8+(gear.mana||0),
     spellPower:power,
     durationPower:1+(power-1)*.65,
