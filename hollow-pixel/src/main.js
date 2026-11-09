@@ -1,6 +1,7 @@
 import './style.css';
 import './game-ui.css';
 import './skills-ui.css';
+import './forge.css';
 import { Game, SAVE_KEY, interactRange } from './game.js';
 import { Renderer } from './render.js';
 import { UI, shell } from './ui.js';
@@ -40,6 +41,7 @@ function windowKey(k){
 }
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(ui.modal&&document.activeElement?.matches('input, textarea, select')&&k!=='tab'){if(k==='escape'){e.preventDefault();ui.close();clearKeys();}return;}
   if(k==='p'){e.preventDefault();if(!e.repeat)void printscreen();return;}
   if(ui.modal){
     if(k==='enter'&&document.activeElement?.matches('a[href], [data-fullscreen], .char button, .char select'))return;
@@ -49,7 +51,7 @@ window.addEventListener('keydown',e=>{
     // Window keys still work while a window is open: switch tab, or close on a second press.
     if(!e.repeat&&!ui.isConversation()&&windowKey(k)){e.preventDefault();return;}
     // Trap keyboard focus inside the open dialog.
-    if(k==='tab'){const focusable=[...document.querySelectorAll('#modal-root button:not(:disabled), #modal-root select:not(:disabled), #modal-root a[href]')],current=focusable.indexOf(document.activeElement),next=e.shiftKey?(current<=0?focusable.length-1:current-1):(current+1)%focusable.length;e.preventDefault();focusable[next]?.focus();}
+    if(k==='tab'){const focusable=[...document.querySelectorAll('#modal-root button:not(:disabled), #modal-root select:not(:disabled), #modal-root input:not(:disabled), #modal-root textarea:not(:disabled), #modal-root a[href]')].filter(el=>el.getClientRects().length),current=focusable.indexOf(document.activeElement),next=e.shiftKey?(current<=0?focusable.length-1:current-1):(current+1)%focusable.length;e.preventDefault();focusable[next]?.focus();}
     return;
   }
   // Space/Enter retain normal activation for focused menu buttons.

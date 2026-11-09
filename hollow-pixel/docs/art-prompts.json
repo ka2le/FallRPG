@@ -4,6 +4,18 @@
   "note": "Source PNGs retained intact. The active v2 sheets use 8x8 cells. Runtime trimming includes all opaque pixels inside each cell, preserving disconnected heads and hats. No post-generation pixelation filter is applied. Original v1 sheets remain archived.",
   "assets": [
     {
+      "file": "public/assets/forge-v1.png",
+      "grid": [
+        4,
+        2
+      ],
+      "status": "active",
+      "mode": "Built-in image_gen.imagegen; generate; transparent_background=true",
+      "source": "exec-0efddb36-8ce2-426c-a1b0-894456e55968.png",
+      "generated": "2026-11-09",
+      "prompt": "Use case: stylized-concept\nAsset type: production pixel art sprite atlas for The Hollow: Between Seasons, an overhead woodland fantasy RPG.\nCreate EXACTLY 8 isolated sprites in a precise equal-cell 4 columns by 2 rows grid, a landscape 1536x1024 transparent canvas. All cells exactly equal. Each complete object contained in its own cell with 15% transparent padding, baseline at 85% of cell height. No grid lines, labels, text or background. True transparent background.\nTop row: FOUR animation frames of the SAME magical outdoor forge station, fixed camera, size and position. A compact open shrine of dark basalt and ancient copper, curved arch enclosing a SMALL violet-cyan power portal, floating faceted ember crystal, low broad stone crafting anvil in front, magical runes, a few tools. This is a small walk-up building furnishing in a village. No furnace, no chimney, no roof, no firebox: the living smith supplies the heat. Frame1 portal calm, frame2 brighter clockwise energy, frame3 crystal pulses and runes glow, frame4 portal curling back toward calm. Keep building silhouette fixed.\nBottom row: FOUR animation frames of the SAME friendly magical LAVA MONSTER SMITH, full body, consistent scale and fixed feet baseline. Stocky humanoid living dark volcanic rock with brilliant molten orange seams, expressive amber eyes, little hornlike rock brows, oversized strong arms, leather smith apron with copper buckle, holds a hammer. Whimsical kindly artisan, no villain. Frame1 idle with hammer lowered; frame2 breathing glow and raised head; frame3 hammer raised to work; frame4 hammer down with a few contained sparks. Every character centered in same relative cell, similar overall bounds.\nStyle: TRUE CHUNKY LOW RESOLUTION PIXEL ART, each subject designed at native about 48x56px and enlarged nearest-neighbor. Crisp square stair-step outlines, big clean pixel clusters, four discrete shades per material, muted woodland RPG palette with amber lava and violet-cyan portal. Three-quarter overhead camera with visible top and front, consistent light upper-left. Readable at 60 to 140px game size. No smooth gradients, painting, anti-aliasing, realism, ground tiles or external shadows. Full subjects including hammer contained inside every padded cell."
+    },
+    {
       "file": "public/assets/environment.png",
       "grid": [
         4,

@@ -1,5 +1,7 @@
 # The Hollow: Between Seasons
 
+**The Forge:** visit Cinder at the magical portal shrine southeast of Willowmere's market, or open The Forge from the pause menu. Create free custom equipment with any item drawing, stats, and executable item functions. The smith's chat defaults to local GPT-6 Luna (medium) via Codex; Settings also supports a personal API key on GitHub Pages. See [the Forge guide](docs/forge.md) for setup and the function contract.
+
 A new, standalone pixel-art RPG set in the Hollow. This is a playable opening chapter and expanded wilderness: an inhabited crossroads, four permanent seasonal habitats, strange wildlife, ecological errands, and automatic basic casting with deliberate tactical spells.
 
 **This is the default active game for the FallRPG project.** Gameplay, items, sprites and UI work target `hollow-pixel/` unless another application is explicitly requested; see the root `../AGENTS.md` and this folder's `AGENTS.md`.
@@ -67,7 +69,7 @@ The view is a three-quarter top-down projection with compressed ground depth, ra
 
 ## Equipment and pixel item art
 
-Character → Equipment (`I`) now has **twelve independent slots**: weapon, head, robe, cloak, hands, belt, boots, charm, ring, focus, relic and lantern. **24 new items bring the collection to 50**, with their own pixel art. Markets sell an initial option for every new slot; bounties award alternatives alongside their original reward. Older saves receive missing bonus gear for completed bounties once, without replaying them. New journeys still begin with the twig and wraps.
+Character → Equipment (`I`) has **eight shared slots** supporting thirteen item types: weapon, head, robe, cloak, hands, belt, boots, charm, ring, shield, focus, relic and lantern. Forged shields use the off hand. **24 new items bring the collectible collection to 50**, with their own pixel art. Markets sell early equipment options; bounties award alternatives alongside their original reward. Older saves receive missing bonus gear for completed bounties once, without replaying them. New journeys still begin with the twig and wraps.
 
 Gear offers distinct choices: stronger tonic healing, more Willow Ward absorption, wider Wildbloom reach, longer Briarbind roots, stronger fox attacks, brighter Aether Lances or shorter spell cooldowns. Several pieces trade health, aether capacity, flow or movement for their specialty. Hover to compare actual derived numbers, or tap twice on touch. Filter by slot, use **Remove** to return worn gear to the pack, and expand **Spell & supply details** to inspect spell-specific values. Equipment does not change basic spark cadence, spell mana costs or the eight-second tonic recovery. Spell cooldown reduction caps at 20%.
 

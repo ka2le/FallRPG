@@ -1,8 +1,8 @@
 // Equipment identities and rewards belong to Between Seasons, independent of the 3D game.
 // Item types keep their identity; fewer body slots each accept several types.
-export const ITEM_TYPES=['weapon','head','robe','cloak','gloves','belt','boots','charm','ring','focus','relic','lantern'];
+export const ITEM_TYPES=['weapon','head','robe','cloak','gloves','belt','boots','charm','ring','shield','focus','relic','lantern'];
 const TRINKET=['ring','charm','relic','belt','gloves'];
-export const SLOT_ACCEPTS={head:['head'],weapon:['weapon'],offhand:['focus','lantern'],robe:['robe','cloak'],boots:['boots'],trinket1:TRINKET,trinket2:TRINKET,trinket3:TRINKET};
+export const SLOT_ACCEPTS={head:['head'],weapon:['weapon'],offhand:['shield','focus','lantern'],robe:['robe','cloak'],boots:['boots'],trinket1:TRINKET,trinket2:TRINKET,trinket3:TRINKET};
 export const EQUIPMENT_SLOTS=Object.keys(SLOT_ACCEPTS);
 export const slotsForType=type=>EQUIPMENT_SLOTS.filter(s=>SLOT_ACCEPTS[s].includes(type));
 const item=(name,slot,stats,description,level,price)=>({name,slot,stats,description,level,...(price?{price}:{})});

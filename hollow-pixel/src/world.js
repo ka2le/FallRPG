@@ -8,12 +8,13 @@ import { populateFrontier } from './frontier-world.js';
 import { frontierLandscapeAt, landscapePoolAt } from './frontier-landscape.js';
 import { plantRootwalls } from './rootwall-layout.js';
 import { PASTURE, PASTURE_SEEDLINGS, inOpeningRunway, inBriarRoad } from './opening.js';
+import { FORGE_LOCATION } from './forge.js';
 
 export const WIDTH=WORLD_SIZE.width, HEIGHT=WORLD_SIZE.height;
 export const {minX:MIN_X,minY:MIN_Y,maxX:MAX_X,maxY:MAX_Y}=WORLD_BOUNDS;
 const LEGACY_WIDTH=2400,LEGACY_HEIGHT=1800;
 export const HOME={x:1080,y:855};
-export const inVillage=point=>Math.hypot((point.x-HOME.x)/1.15,point.y-HOME.y)<210||CAMP_SITES.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius)||FRONTIER_CAMPS.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius);
+export const inVillage=point=>Math.hypot(point.x-FORGE_LOCATION.x,point.y-FORGE_LOCATION.y)<52||Math.hypot((point.x-HOME.x)/1.15,point.y-HOME.y)<210||CAMP_SITES.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius)||FRONTIER_CAMPS.some(c=>Math.hypot(point.x-c.x,point.y-c.y)<c.radius);
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function random(seed=9281){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -155,6 +156,7 @@ export function createWorld(){
     {id:'mara',kind:'npc',name:'Mara',role:'BOUNDARY GARDENER',sprite:13,x:1140,y:790,size:34},
     {id:'hearth',kind:'hearth',name:'Hearthstone',x:1080,y:978},
     {id:'market',kind:'market',name:'Willowmere market',x:1190,y:930},
+    {id:'forge',kind:'forge',name:'The Forge · Cinder, the living smith',...FORGE_LOCATION},
     {id:'innkeeper',kind:'npc',name:'Toma',sprite:36,x:970,y:805,size:32},
     {id:'pip',kind:'npc',name:'Pip',sprite:38,x:1290,y:855,homeX:1290,homeY:855,size:27,roaming:true,walk:0},
     {id:'crossing',kind:'crossing',name:'Tangled crossing',x:1275,y:1385},
@@ -182,6 +184,8 @@ export function createWorld(){
   // The first fight and its retreat lane should teach combat, not trap the
   // apprentice between a building, a random trunk and the haven boundary.
   for(const p of world.props)if(p.solid&&!p.label&&!p.building&&!p.blockage&&(inOpeningRunway(p)||dist(p,PASTURE)<130))p.removed=true;
+  // Add after seeded generation so existing scenery/creature identities stay stable.
+  props.push({id:'forge-building',sprite:0,x:FORGE_LOCATION.x+13,y:FORGE_LOCATION.y-21,size:115,phase:0,solid:24,atlas:'forge',label:'The Forge',forge:true});
   return world;
 }
 

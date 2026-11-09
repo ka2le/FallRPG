@@ -14,10 +14,16 @@ export class Renderer{
   async init(){
     const [environment,creatures,groves,wilds,wildlife]=await Promise.all([loadImage(new URL('../public/assets/world-v2.png',import.meta.url).href),loadImage(new URL('../public/assets/characters-v2.png',import.meta.url).href),loadImage(new URL('../public/assets/groves-expansion.png',import.meta.url).href),loadImage(new URL('../public/assets/wilds-expansion.png',import.meta.url).href),loadImage(new URL('../public/assets/wildlife-expansion.png',import.meta.url).href)]);
     this.atlases={environment,creatures,groves,wilds,wildlife};
+    this.atlases.forge=await loadImage(new URL('../public/assets/forge-v1.png',import.meta.url).href);
     for(const [name,img] of Object.entries(this.atlases)){
       const canvas=makeCanvas(img.width,img.height),ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
       const pixels=ctx.getImageData(0,0,img.width,img.height).data;
-      this.sprites[name]=Array.from({length:64},(_,index)=>cellBounds(pixels,img.width,img.height,index));
+      this.sprites[name]=Array.from({length:name==='forge'?8:64},(_,index)=>cellBounds(pixels,img.width,img.height,index,name==='forge'?4:8,name==='forge'?2:8));
+      if(name==='forge')for(let row=0;row<2;row++){
+        const cw=img.width/4,ch=img.height/2,cells=this.sprites[name].slice(row*4,row*4+4);
+        const left=Math.min(...cells.map((s,i)=>s.x-i*cw)),top=Math.min(...cells.map(s=>s.y-row*ch)),right=Math.max(...cells.map((s,i)=>s.x+s.w-i*cw)),bottom=Math.max(...cells.map(s=>s.y+s.h-row*ch));
+        for(let col=0;col<4;col++)this.sprites[name][row*4+col]={x:col*cw+left,y:row*ch+top,w:right-left,h:bottom-top};
+      }
     }
     this.atlases.details=environment;this.sprites.details=this.sprites.environment.slice(16,32);
     this.ground=new TerrainCache();this.mini=this.bakeMap();
@@ -86,6 +92,7 @@ export class Renderer{
     const queue=[];this.nearProps=propsNear(g.world,this.camera.x,this.camera.y/Y_SCALE,Math.max(this.width,this.height/Y_SCALE)/2+240);
     for(const prop of this.nearProps)if(!prop.removed&&this.visible(prop.x,prop.y))queue.push({y:prop.y,kind:'prop',v:prop});
     for(const i of g.world.interactables)if(!i.collected&&this.visible(i.x,i.y)&&(i.kind==='npc'||i.kind==='herb'))queue.push({y:i.y,kind:i.kind,v:i});
+    for(const i of g.world.interactables)if(i.kind==='forge'&&this.visible(i.x,i.y))queue.push({y:i.y+8,kind:'smith',v:i});
     for(const creature of g.creatures)if(this.visible(creature.x,creature.y)&&(!creature.dead||g.time-creature.deadAt<1))queue.push({y:creature.y,kind:'creature',v:creature});
     for(const a of g.world.ambient)if(this.visible(a.x,a.y,40))queue.push({y:a.y,kind:'ambient',v:a});
     for(const wall of g.world.barriers){for(let n=0;n<=8;n++){const x=wall.a.x+(wall.b.x-wall.a.x)*n/8,y=wall.a.y+(wall.b.y-wall.a.y)*n/8;queue.push({y,kind:'wall',v:{x,y,life:wall.life}});}}
@@ -97,7 +104,7 @@ export class Renderer{
       if(entry.kind==='prop'){
         c.globalAlpha=v.vegetation?.10:.18;this.ellipse(c,s.x+8,s.y-1,v.size*.27,v.size*.10,'#122d26');c.globalAlpha=1;
         const behind=Math.abs(v.x-p.x)<v.size*.36&&p.y<v.y&&p.y>v.y-v.size/Y_SCALE;
-        this.sprite(['groves','wilds'].includes(v.atlas)?v.atlas:'environment',environmentFrame(v),s.x,s.y,v.size,{face:v.flip?-1:1,sway:v.tree||v.vegetation?Math.sin(g.time*.7+v.phase)*.012:0,alpha:behind?.42:1});
+        this.sprite(['groves','wilds','forge'].includes(v.atlas)?v.atlas:'environment',v.forge?Math.floor(g.time*3)%4:environmentFrame(v),s.x,s.y,v.size,{face:v.flip?-1:1,sway:v.tree||v.vegetation?Math.sin(g.time*.7+v.phase)*.012:0,alpha:behind?.42:1});
         if(v.tree&&v.sprite===0&&!v.atlas){for(let n=0;n<3;n++){const a=g.time*.8+n*2+v.phase;c.globalAlpha=.45+Math.sin(a)*.2;this.ellipse(c,s.x+Math.sin(n*3+v.phase)*v.size*.25,s.y-v.size*.45+Math.sin(a)*2,1.5,2,'#e7cb79');}c.globalAlpha=1;}
         if(v.clasp&&v.lastSnap&&g.time-v.lastSnap<.7){c.strokeStyle='#c4c387';c.lineWidth=2;for(let a=0;a<5;a++){c.beginPath();c.moveTo(s.x,s.y-10);c.quadraticCurveTo(s.x+Math.cos(a*1.25)*20,s.y-15,s.x+Math.cos(a*1.25)*40,s.y+Math.sin(a*1.25)*12);c.stroke();}}
       }
@@ -105,6 +112,10 @@ export class Renderer{
         this.ellipse(c,s.x,s.y,8,3,'#354f3c');this.sprite('creatures',characterFrame(v.sprite,v),s.x,s.y,v.size||32,{face:v.face||1});
         if(g.nearby?.id===v.id)this.text(v.name,s.x,s.y-40,'#f0d89e',7);
         const mark=this.quests().givers.get(v.id);if(mark){const first=v.id==='rowan'&&g.quests.herd==='offered';if(mark==='!')this.questRing(s.x,s.y,first);this.questBadge(s.x,s.y-(first?56:50),mark,first);}
+      }
+      if(entry.kind==='smith'){
+        this.ellipse(c,s.x-42,s.y+10,15,5,'#354238');this.sprite('forge',4+[0,1,0,2,3,0][Math.floor(g.time*3)%6],s.x-42,s.y+10,57);
+        if(g.nearby?.id===v.id||this.hoverSpot===v.id)this.text('Cinder · The Forge',s.x-16,s.y-69,'#ffc795',7);
       }
       if(entry.kind==='herb'){
         this.sprite('details',biomeAt(v.x,v.y)==='winter'?8:4,s.x,s.y,21,{sway:Math.sin(g.time+v.x)*.025});if(Math.sin(g.time*2+v.x)>.7){c.fillStyle='#fae8aa';c.fillRect(s.x+3,s.y-22,1,3);}
@@ -211,7 +222,7 @@ export class Renderer{
       else if(near||hover)this.text(m.name.replace(/^Willowmere /,'').replace(/^\w/,ch=>ch.toUpperCase()),base.x,y-16,'#f6dc94',7);
     }
     const n=g.nearby;if(!n||n.kind==='market')return;
-    const verb={npc:'Talk',market:'Trade',herb:'Gather',lore:'Read',sign:'Map',hearth:'Rest',crossing:'Clear',elder:'Look'}[n.kind]||'Use';
+    const verb={npc:'Talk',market:'Trade',forge:'Forge',herb:'Gather',lore:'Read',sign:'Map',hearth:'Rest',crossing:'Clear',elder:'Look'}[n.kind]||'Use';
     const s=this.screen(n.x,n.y);this.prompt(s.x,s.y+13,verb);
   }
   coinSign(x,y,k,lit){
@@ -293,6 +304,10 @@ export class Renderer{
       }
     }
     // Markets: a small amber coin wherever you can buy tonics and gear.
+    if(large&&zoom>=2)for(const forge of g.world.interactables.filter(i=>i.kind==='forge')){
+      const p=point(forge.x,forge.y);if(!visible(p))continue;c.fillStyle='#d8a5ef';c.strokeStyle='#30243a';c.lineWidth=1.5;c.beginPath();c.moveTo(p.x,p.y-6);c.lineTo(p.x+5,p.y);c.lineTo(p.x,p.y+6);c.lineTo(p.x-5,p.y);c.closePath();c.fill();c.stroke();
+      if(zoom>=8){c.font='10px Georgia';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#23392ec9';c.strokeText('The Forge',p.x,p.y+18);c.fillStyle='#efcaef';c.fillText('The Forge',p.x,p.y+18);}
+    }
     if(large&&zoom>=2)for(const m of g.world.interactables){if(m.kind!=='market')continue;const p=point(m.x,m.y);if(!visible(p))continue;
       c.beginPath();c.arc(p.x,p.y,4.5,0,Math.PI*2);c.fillStyle='#e8b64c';c.strokeStyle='#2a1d08';c.lineWidth=1.5;c.fill();c.stroke();c.fillStyle='#fff0b8';c.fillRect(Math.round(p.x)-1,Math.round(p.y)-2,2,3);
       if(zoom>=8){c.font='10px Georgia';c.textAlign='center';c.textBaseline='alphabetic';c.lineWidth=3;c.strokeStyle='#23392ec9';c.strokeText('Market',p.x,p.y+15);c.fillStyle='#f6dc94';c.fillText('Market',p.x,p.y+15);}}
@@ -317,5 +332,13 @@ export class Renderer{
   }
   hitCreature(point){return this.game.creatures.filter(c=>!c.dead&&Math.abs(c.x-point.x)<SPECIES[c.type].size*.45&&point.y*Y_SCALE>c.y*Y_SCALE-SPECIES[c.type].size&&point.y<c.y+12).sort((a,b)=>b.y-a.y)[0];}
   // Market stalls are big: the whole stall (and its sign) is clickable, not just a point at its foot.
-  hitInteractable(point){return this.game.world.interactables.filter(i=>!i.collected&&(i.kind==='market'?Math.abs(point.x-i.x)<52&&point.y>i.y-130&&point.y<i.y+22:Math.abs(point.x-i.x)<22&&point.y>i.y-60&&point.y<i.y+18)).sort((a,b)=>b.y-a.y)[0];}
+  hitInteractable(point){return this.game.world.interactables.filter(i=>{
+    if(i.collected)return false;
+    if(i.kind==='market')return Math.abs(point.x-i.x)<52&&point.y>i.y-130&&point.y<i.y+22;
+    // The shrine's upper silhouette is east of its interaction point. Keep its
+    // hit area off the neighboring market canopy; the smith occupies the left
+    // side only close to ground level.
+    if(i.kind==='forge')return point.y>i.y-180&&point.y<i.y+25&&(point.y<i.y-60?Math.abs(point.x-i.x-13)<56:point.x>i.x-66&&point.x<i.x+70);
+    return Math.abs(point.x-i.x)<22&&point.y>i.y-60&&point.y<i.y+18;
+  }).sort((a,b)=>b.y-a.y)[0];}
 }

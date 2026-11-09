@@ -185,6 +185,8 @@
 /* --- Hover card --- */
 .game-tip{position:fixed;z-index:200;width:250px;padding:10px 12px;background:#14251ef7;border:1px solid #cdb36f;box-shadow:0 0 0 2px #0c1a14,0 8px 24px #0009;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;color:#e8dfc2;font-size:12px}
 .game-tip.shown{opacity:1;transform:none}
+.game-tip.shown:has([data-forge-edit]){pointer-events:auto}
+.game-tip [data-forge-edit]{padding:6px 0;color:#f3dca0;text-decoration:underline;text-underline-offset:3px}
 .game-tip header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .game-tip .tip-art{width:38px;height:38px;flex:none;background:radial-gradient(#33503d,#14251d);border:1px solid #6f7756;color:#efd38c}
 .game-tip header b{display:block;font:15px Georgia,serif;font-weight:400;color:#f3dca0}

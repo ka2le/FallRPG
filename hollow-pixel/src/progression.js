@@ -1,4 +1,5 @@
 // Shared by the live game and the accelerated balance runner.
+import { gearCooldown, gearProtection } from './forge.js';
 export const PROGRESSION_VERSION=3;
 export const ATTRIBUTES={
   power:{name:'Power',description:'+5% power for basic attacks and every spell.'},
@@ -26,8 +27,9 @@ export function playerStats(level,attributes,gear={}){
     spellPower:power,
     durationPower:1+(power-1)*.65,
     manaRegen:4+(attributes.mana||0)*.65+(gear.regen||0),
-    healthRegen:.5,healthRegenRest:1.2,
-    cooldownReduction:Math.min(.2,Math.max(0,gear.cooldown||0)),
+    speed:gear.speed||0,armor:gearProtection(gear),
+    healthRegen:.5+(gear.healthRegen||0),healthRegenRest:1.2+(gear.healthRegen||0),
+    cooldownReduction:gearCooldown(gear),
     wardBonus:gear.ward||0,bloomBonus:gear.bloom||0,bindBonus:gear.bind||0,
     foxBonus:gear.fox||0,lanceBonus:gear.lance||0,tonicHealing:65+(gear.tonic||0),
   };

@@ -4,6 +4,7 @@ import { STANCES,SPELL_BY_ID } from './data.js';
 import { ATTRIBUTES, playerStats, xpForLevel } from './progression.js';
 import { GEAR } from './adventure.js';
 import { SLOT_ACCEPTS } from './items.js';
+import { aggregateGear, gearProtection } from './forge.js';
 import { effectiveSpell } from './spell-effects.js';
 import { SpellScreen } from './spell-screen.js';
 import { gicon, itemArt, art, SLOT_INFO, SLOT_ORDER, EQUIP_SLOT_INFO, EQUIPMENT_SLOTS, slotAccepts, STAT_INFO, STAT_ORDER, GEAR_STAT, ATTR_ART, ATTR_COLOR, ATTR_SHORT } from './ui-art.js';
@@ -14,11 +15,10 @@ const WHOLE_STATS=new Set(['health','mana','damage','ward','bloom','fox','lance'
 
 // Exactly the numbers the game uses, for any hypothetical growth or equipment.
 export function deriveStats(game,attributes=game.attributes,equipment=game.equipment){
-  const gear={};
-  for(const id of Object.values(equipment))for(const [k,v] of Object.entries(GEAR[id]?.stats||{}))gear[k]=(gear[k]||0)+v;
-  const s=playerStats(game.player.level,attributes,gear);
-  const spell=id=>effectiveSpell(id,s,game.spellUpgrades.has(id));
-  return {health:s.maxHp,healthRegen:s.healthRegen,mana:s.maxMana,regen:s.manaRegen,power:s.spellPower,damage:(STANCES[0].damage+(gear.damage||0))*s.spellPower,armor:Math.min(.6,gear.armor||0),speed:gear.speed||0,
+  const gear=aggregateGear(Object.values(equipment).map(id=>GEAR[id]));
+  const ids=Object.values(equipment),base=playerStats(game.player.level,attributes,gear),s=game.forgeRuntime?.transform('onStats',{stats:base},{ids}).stats||base;
+  const spell=id=>{const values=effectiveSpell(id,s,game.spellUpgrades.has(id));return game.forgeRuntime?.transform('onSpell',{spell:id,values},{ids}).values||values;};
+  return {health:s.maxHp,healthRegen:s.healthRegen,mana:s.maxMana,regen:s.manaRegen,power:s.spellPower,damage:(STANCES[0].damage+(gear.damage||0))*s.spellPower,armor:s.armor,speed:s.speed,
     ward:spell('ward').shield,bloom:spell('nova').radius,bind:spell('bind').duration,
     fox:spell('fox').damage,lance:spell('surge').damage,tonic:s.tonicHealing,cooldown:s.cooldownReduction};
 }
@@ -29,7 +29,13 @@ export class CharacterScreen{
     document.addEventListener('pointerdown',e=>{this.pointer=e.pointerType||'mouse';},true);
     document.addEventListener('pointerover',e=>this.hover(e.target));
     document.addEventListener('focusin',e=>this.hover(e.target));
-    document.addEventListener('pointerout',e=>{if(e.target.closest?.('[data-tip]')&&!e.relatedTarget?.closest?.('[data-tip]'))this.unhover();});
+    document.addEventListener('pointerout',e=>{
+      if(e.relatedTarget?.closest?.('[data-tip], .game-tip'))return;
+      if(e.target.closest?.('[data-tip], .game-tip')){
+        if(document.querySelector('.game-tip.shown [data-forge-edit]'))setTimeout(()=>{if(!document.querySelector('.game-tip:hover, [data-tip]:hover'))this.unhover();},150);
+        else this.unhover();
+      }
+    });
     document.addEventListener('pointerdown',e=>this.dragStart(e));
     document.addEventListener('pointermove',e=>this.dragMove(e));
     document.addEventListener('pointerup',e=>this.dragEnd(e));
@@ -188,7 +194,7 @@ export class CharacterScreen{
         <ul class="tip-stats">${Object.entries(it.stats).map(([k,v])=>GEAR_STAT[k]?`<li>${gicon(GEAR_STAT[k].icon)}${GEAR_STAT[k].text(v)}</li>`:'').join('')||'<li class="dim">No bonuses</li>'}</ul>
         <div class="tip-compare"><small>${worn?'If you take it off':cur?`Replaces ${esc(GEAR[cur].name)}`:`Goes in ${EQUIP_SLOT_INFO[slot].name.toLowerCase()}`}</small>${this.diffList(d)}</div>
         ${it.description&&!/^[+\d]/.test(it.description)?`<p class="tip-flavor">${esc(it.description)}</p>`:''}
-        <p class="tip-act">${kind==='reward'?(owned?'Bounty reward · already owned':'Bounty reward'):kind==='shop'?(owned?'Owned':g.player.level<(it.level||1)?`Reach level ${it.level}`:`${it.price} amber · click to choose`):this.pointer==='touch'?(worn?'Tap again to take off':'Tap again to equip'):(worn?'Click or drag to bag to take off':'Click or drag to a slot')}</p>`;}
+        ${it.forged?`<p class="tip-flavor">${g.forgeRuntime.active.get(id)?.failed?`Function stopped: ${esc(g.forgeRuntime.active.get(id).error)}`:it.functionCode?'Custom function while equipped':'Forged item'}</p><button data-forge-edit="${id}">Edit at Forge →</button>`:''}<p class="tip-act">${kind==='reward'?(owned?'Bounty reward · already owned':'Bounty reward'):kind==='shop'?(owned?'Owned':g.player.level<(it.level||1)?`Reach level ${it.level}`:`${it.price} amber · click to choose`):this.pointer==='touch'?(worn?'Tap again to take off':'Tap again to equip'):(worn?'Click or drag to bag to take off':'Click or drag to a slot')}</p>`;}
     else if(kind==='grow'){const base=deriveStats(g,this.pendingAttrs()),next=deriveStats(g,this.pendingAttrs(id)),d=statDiff(base,next);preview=next;
       html=`<header>${art(`attr-${id}`,ATTR_ART[id],'tip-art')}<div><b>+1 ${ATTRIBUTES[id].name}</b><small>${ATTR_SHORT[id]}</small></div></header><div class="tip-compare">${this.diffList(d)}</div><p class="tip-flavor">${esc(ATTRIBUTES[id].description)}</p>`;}
     else if(kind==='stat'){const s=STAT_INFO[id];html=`<header>${art(`stat-${id}`,s.icon,'tip-art')}<div><b>${s.name}</b><small>${s.fmt(deriveStats(g)[id])}</small></div></header><p class="tip-flavor">${s.about}</p>`;}

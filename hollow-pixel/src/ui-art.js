@@ -61,6 +61,7 @@ export const SLOT_INFO={
   gloves:{name:'Hands',icon:'gloves',hint:'Steady free sparks, strengthen magic or hold Briarbind longer.'},
   belt:{name:'Belt',icon:'belt',hint:'Carry stronger tonics, deeper reserves or protective roots.'},
   ring:{name:'Ring',icon:'ring',hint:'Small magical bargains: power, recovery and deliberate tradeoffs.'},
+  shield:{name:'Shield',icon:'shield',hint:'Shields and bucklers are carried in the off hand.'},
   focus:{name:'Focus',icon:'focus',hint:'An off-hand focus specializes Willow Ward, Wildbloom or Aether Lance.'},
   relic:{name:'Relic',icon:'relic',hint:'Shorten spell recovery, strengthen your fox or lengthen Briarbind.'},
   lantern:{name:'Lantern',icon:'lantern',hint:'Carry brighter wards, wider blooms or restorative supplies.'},
@@ -84,7 +85,7 @@ export const STAT_INFO={
   healthRegen:{name:'Health recovery',icon:'heart',color:'#a7ce94',fmt:v=>`${dec(v)}/s`,delta:v=>`${v>0?'+':'−'}${Math.abs(v).toFixed(2)}/s`,about:'Slow passive healing: 0.5/s in combat and 1.2/s while resting or travelling outside combat.'},
   power:{name:'Magic power',icon:'star',color:'#e8c572',fmt:pct,delta:signPct,about:'Scales all spell and spark damage, and how long shields, roots and summons last.'},
   damage:{name:'Spark damage',icon:'spark',color:'#efab69',fmt:num,delta:signedWholeNumber,about:'Damage of each free automatic spark.'},
-  armor:{name:'Protection',icon:'shield',color:'#b7c49a',fmt:pct,delta:signPct,about:'Share of incoming damage ignored (up to 60%).'},
+  armor:{name:'Protection',icon:'shield',color:'#b7c49a',fmt:pct,delta:signPct,about:'Share of incoming damage ignored. Ordinary gear caps at 60%; forged bonuses can reach 100%.'},
   speed:{name:'Movement',icon:'boot',color:'#c9b6e4',fmt:signPct,delta:signPct,about:'Extra walking and running speed.'},
   ward:{name:'Willow Ward',icon:'shield',color:'#bdd79f',fmt:num,delta:signedWholeNumber,about:'Damage absorbed by a fresh Willow Ward.'},
   bloom:{name:'Bloom radius',icon:'sprout',color:'#9fe08a',fmt:v=>`${num(v)} u`,delta:v=>`${signedWholeNumber(v)} u`,about:'Wildbloom reaches this far, with line of sight still required.'},
@@ -92,7 +93,7 @@ export const STAT_INFO={
   fox:{name:'Fox damage',icon:'spark',color:'#e5bc7d',fmt:num,delta:signedWholeNumber,about:'Damage per attack of a newly summoned Lantern Fox.'},
   lance:{name:'Lance damage',icon:'spark',color:'#efab69',fmt:num,delta:signedWholeNumber,about:'Damage of Aether Lance. Extra spark damage applies only to free sparks.'},
   tonic:{name:'Tonic healing',icon:'heart',color:'#e07b6a',fmt:num,delta:signedWholeNumber,about:'Health restored by one tonic, capped at your maximum health. Recovery remains eight seconds.'},
-  cooldown:{name:'Spell recovery',icon:'relic',color:'#c9b6e4',fmt:v=>`${v?'-':''}${pct(v)}`,delta:signPct,about:'Reduction to spell cooldowns, capped at 20%. Aether costs and basic spark timing stay the same.'},
+  cooldown:{name:'Spell recovery',icon:'relic',color:'#c9b6e4',fmt:v=>`${v?'-':''}${pct(v)}`,delta:signPct,about:'Reduction to spell cooldowns. Ordinary gear caps at 20%; forged bonuses can reach 100%. Aether costs and basic spark timing stay the same.'},
 };
 export const STAT_ORDER=['health','healthRegen','mana','regen','power','damage','armor','speed','ward','bloom','bind','fox','lance','tonic','cooldown'];
 
@@ -104,6 +105,7 @@ export const GEAR_STAT={
   armor:{icon:'shield',text:v=>`${pct(v)} protection`},
   mana:{icon:'drop',text:v=>`${v>=0?'+':''}${Math.round(v)} aether`},
   regen:{icon:'regen',text:v=>`${v>=0?'+':''}${v} aether/s`},
+  healthRegen:{icon:'heart',text:v=>`${v>=0?'+':''}${v} health/s`},
   speed:{icon:'boot',text:v=>`${signPct(v)} movement`},
   ward:{icon:'shield',text:v=>`${signedWholeNumber(v)} Willow Ward absorption`},
   bloom:{icon:'sprout',text:v=>`${signedWholeNumber(v)} Wildbloom radius`},
@@ -118,4 +120,4 @@ export const ATTR_ART={power:'star',mana:'drop'};
 export const ATTR_COLOR={power:'#e8c572',mana:'#6fb7c6'};
 export const ATTR_SHORT={power:'+5% power · every attack and spell',mana:'+8 maximum mana · +0.65 mana/s'};
 
-export const itemArt=(id,item,cls='')=>pixelItem(id,cls)||art(`item-${id}`,SLOT_INFO[item.slot]?.icon||'gem',cls);
+export const itemArt=(id,item,cls='')=>pixelItem(item.sprite||id,cls)||art(`item-${id}`,SLOT_INFO[item.slot]?.icon||'gem',cls);

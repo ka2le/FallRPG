@@ -9,8 +9,8 @@ import { deriveStats } from '../src/character.js';
 const world=()=>({props:[],interactables:[],ambient:[],rootwallGroups:[],creatures:[0,1].map(i=>({id:`seed-${i}`,type:'seedling',x:1740+i*65,y:855,homeX:1740+i*65,homeY:855,phase:0,level:1}))});
 function game(saved){const g=new Game(saved,{world:world()});Object.assign(g.player,{x:1680,y:855});g.autoAttack=false;g.wasSafe=false;g.learned=new Set(ACTIVE_SPELL_IDS);return g;}
 function wear(g,...ids){for(const id of ids){g.awardItem(id);assert.ok(g.equip(id));}}
-test('eight shared slots for twelve item types, fifty collectible items and 128 distinct atlas cells agree',()=>{
- assert.equal(EQUIPMENT_SLOTS.length,8);assert.equal(ITEM_TYPES.length,12);for(const t of ITEM_TYPES)assert.ok(Object.values(SLOT_ACCEPTS).some(a=>a.includes(t)),t);assert.equal(Object.keys(GEAR).length,50);assert.equal(Object.keys(ITEM_SPRITES).length,128);assert.equal(GEAR_SPRITE_IDS.length,64);
+test('eight shared slots for thirteen item types, fifty collectible items and 128 distinct atlas cells agree',()=>{
+ assert.equal(EQUIPMENT_SLOTS.length,8);assert.equal(ITEM_TYPES.length,13);for(const t of ITEM_TYPES)assert.ok(Object.values(SLOT_ACCEPTS).some(a=>a.includes(t)),t);assert.equal(Object.keys(GEAR).length,50);assert.equal(Object.keys(ITEM_SPRITES).length,128);assert.equal(GEAR_SPRITE_IDS.length,64);
  const cells=new Set();for(const [id,it] of Object.entries(ITEM_SPRITES)){assert.ok(it.index>=0&&it.index<64);const key=`${it.sheet}:${it.index}`;assert.ok(!cells.has(key),id);cells.add(key);}
  for(const [id,it] of Object.entries(GEAR)){assert.ok(ITEM_SPRITES[id],id);assert.ok(ITEM_TYPES.includes(it.slot));}
  const rewards=Object.values(EXTRA_REWARDS).flat();for(const [id,it] of Object.entries(NEW_GEAR))assert.ok(it.price||rewards.includes(id),id);for(const id of Object.keys(EXTRA_REWARDS))assert.ok(HUNTS.some(h=>h.id===id),id);

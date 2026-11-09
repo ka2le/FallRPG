@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "sprites": "node scripts/export-item-manifest.mjs",
+    "forge:bridge": "node scripts/forge-bridge.mjs",
+    "forge:validate-agent": "node scripts/validate-forge-agent.mjs",
     "prebuild": "npm run sprites",
     "dev": "vite --host 127.0.0.1 --port 5175 --strictPort",
     "build": "vite build",
