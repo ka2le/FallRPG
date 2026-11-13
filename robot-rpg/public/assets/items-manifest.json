@@ -1,0 +1,690 @@
+{
+  "grid": [
+    8,
+    8
+  ],
+  "format": "PNG with transparency",
+  "cellBounds": "Round each cell edge from column/row * sheet width/height / 8; retain native pixels.",
+  "sheets": {
+    "items-gear-v1": {
+      "file": "items-gear-v1.png",
+      "width": 1254,
+      "height": 1254
+    },
+    "items-supplies-v1": {
+      "file": "items-supplies-v1.png",
+      "width": 1254,
+      "height": 1254
+    }
+  },
+  "sprites": {
+    "twig": {
+      "sheet": "items-gear-v1",
+      "index": 0
+    },
+    "wraps": {
+      "sheet": "items-gear-v1",
+      "index": 1
+    },
+    "reedstaff": {
+      "sheet": "items-gear-v1",
+      "index": 2
+    },
+    "briarcoat": {
+      "sheet": "items-gear-v1",
+      "index": 3
+    },
+    "copperwand": {
+      "sheet": "items-gear-v1",
+      "index": 4
+    },
+    "wayboots": {
+      "sheet": "items-gear-v1",
+      "index": 5
+    },
+    "mosscharm": {
+      "sheet": "items-gear-v1",
+      "index": 6
+    },
+    "amberfocus": {
+      "sheet": "items-gear-v1",
+      "index": 7
+    },
+    "wintercoat": {
+      "sheet": "items-gear-v1",
+      "index": 8
+    },
+    "cinderstaff": {
+      "sheet": "items-gear-v1",
+      "index": 9
+    },
+    "eldercharm": {
+      "sheet": "items-gear-v1",
+      "index": 10
+    },
+    "frostboots": {
+      "sheet": "items-gear-v1",
+      "index": 11
+    },
+    "crownstaff": {
+      "sheet": "items-gear-v1",
+      "index": 12
+    },
+    "relic-longbriar": {
+      "sheet": "items-gear-v1",
+      "index": 13
+    },
+    "relic-ambermarch": {
+      "sheet": "items-gear-v1",
+      "index": 14
+    },
+    "relic-sunken-cinders": {
+      "sheet": "items-gear-v1",
+      "index": 15
+    },
+    "relic-mossway": {
+      "sheet": "items-gear-v1",
+      "index": 16
+    },
+    "relic-redwood": {
+      "sheet": "items-gear-v1",
+      "index": 17
+    },
+    "relic-bellwood": {
+      "sheet": "items-gear-v1",
+      "index": 18
+    },
+    "relic-ash-corridor": {
+      "sheet": "items-gear-v1",
+      "index": 19
+    },
+    "relic-rime-forest": {
+      "sheet": "items-gear-v1",
+      "index": 20
+    },
+    "relic-southern-canopy": {
+      "sheet": "items-gear-v1",
+      "index": 21
+    },
+    "relic-burial-road": {
+      "sheet": "items-gear-v1",
+      "index": 22
+    },
+    "relic-winter-pilgrimage": {
+      "sheet": "items-gear-v1",
+      "index": 23
+    },
+    "relic-ember-deeps": {
+      "sheet": "items-gear-v1",
+      "index": 24
+    },
+    "relic-lastwood": {
+      "sheet": "items-gear-v1",
+      "index": 25
+    },
+    "sprigcirclet": {
+      "sheet": "items-gear-v1",
+      "index": 26
+    },
+    "mothhood": {
+      "sheet": "items-gear-v1",
+      "index": 27
+    },
+    "rimecrown": {
+      "sheet": "items-gear-v1",
+      "index": 28
+    },
+    "leafcape": {
+      "sheet": "items-gear-v1",
+      "index": 29
+    },
+    "duskshroud": {
+      "sheet": "items-gear-v1",
+      "index": 30
+    },
+    "auroraveil": {
+      "sheet": "items-gear-v1",
+      "index": 31
+    },
+    "reedgrips": {
+      "sheet": "items-gear-v1",
+      "index": 32
+    },
+    "briargrips": {
+      "sheet": "items-gear-v1",
+      "index": 33
+    },
+    "cindermitts": {
+      "sheet": "items-gear-v1",
+      "index": 34
+    },
+    "herbcord": {
+      "sheet": "items-gear-v1",
+      "index": 35
+    },
+    "moonspool": {
+      "sheet": "items-gear-v1",
+      "index": 36
+    },
+    "rootbuckle": {
+      "sheet": "items-gear-v1",
+      "index": 37
+    },
+    "amberloop": {
+      "sheet": "items-gear-v1",
+      "index": 38
+    },
+    "dewloop": {
+      "sheet": "items-gear-v1",
+      "index": 39
+    },
+    "eclipseloop": {
+      "sheet": "items-gear-v1",
+      "index": 40
+    },
+    "watchlens": {
+      "sheet": "items-gear-v1",
+      "index": 41
+    },
+    "frostprism": {
+      "sheet": "items-gear-v1",
+      "index": 42
+    },
+    "emberorb": {
+      "sheet": "items-gear-v1",
+      "index": 43
+    },
+    "pocketglass": {
+      "sheet": "items-gear-v1",
+      "index": 44
+    },
+    "foxidol": {
+      "sheet": "items-gear-v1",
+      "index": 45
+    },
+    "thornrelic": {
+      "sheet": "items-gear-v1",
+      "index": 46
+    },
+    "fireflylamp": {
+      "sheet": "items-gear-v1",
+      "index": 47
+    },
+    "wardlamp": {
+      "sheet": "items-gear-v1",
+      "index": 48
+    },
+    "frostlamp": {
+      "sheet": "items-gear-v1",
+      "index": 49
+    },
+    "mushroom-hat": {
+      "sheet": "items-gear-v1",
+      "index": 50,
+      "name": "Mushroom cap",
+      "category": "Future equipment"
+    },
+    "antler-circlet": {
+      "sheet": "items-gear-v1",
+      "index": 51,
+      "name": "Antler circlet",
+      "category": "Future equipment"
+    },
+    "sun-shield": {
+      "sheet": "items-gear-v1",
+      "index": 52,
+      "name": "Sun shield",
+      "category": "Future equipment"
+    },
+    "bark-buckler": {
+      "sheet": "items-gear-v1",
+      "index": 53,
+      "name": "Bark buckler",
+      "category": "Future equipment"
+    },
+    "leaf-dagger": {
+      "sheet": "items-gear-v1",
+      "index": 54,
+      "name": "Leaf dagger",
+      "category": "Future equipment"
+    },
+    "crystal-sword": {
+      "sheet": "items-gear-v1",
+      "index": 55,
+      "name": "Crystal sword",
+      "category": "Future equipment"
+    },
+    "copper-axe": {
+      "sheet": "items-gear-v1",
+      "index": 56,
+      "name": "Copper axe",
+      "category": "Future equipment"
+    },
+    "rune-bow": {
+      "sheet": "items-gear-v1",
+      "index": 57,
+      "name": "Runic bow",
+      "category": "Future equipment"
+    },
+    "leather-quiver": {
+      "sheet": "items-gear-v1",
+      "index": 58,
+      "name": "Leather quiver",
+      "category": "Future equipment"
+    },
+    "fishing-rod": {
+      "sheet": "items-gear-v1",
+      "index": 59,
+      "name": "Fishing rod",
+      "category": "Future equipment"
+    },
+    "gathering-sickle": {
+      "sheet": "items-gear-v1",
+      "index": 60,
+      "name": "Gathering sickle",
+      "category": "Future equipment"
+    },
+    "mining-pick": {
+      "sheet": "items-gear-v1",
+      "index": 61,
+      "name": "Mining pick",
+      "category": "Future equipment"
+    },
+    "travel-satchel": {
+      "sheet": "items-gear-v1",
+      "index": 62,
+      "name": "Traveling satchel",
+      "category": "Future equipment"
+    },
+    "bedroll": {
+      "sheet": "items-gear-v1",
+      "index": 63,
+      "name": "Bedroll",
+      "category": "Future equipment"
+    },
+    "health-tonic": {
+      "sheet": "items-supplies-v1",
+      "index": 0,
+      "name": "Health tonic",
+      "category": "Consumables"
+    },
+    "aether-flask": {
+      "sheet": "items-supplies-v1",
+      "index": 1,
+      "name": "Aether flask",
+      "category": "Consumables"
+    },
+    "antidote": {
+      "sheet": "items-supplies-v1",
+      "index": 2,
+      "name": "Antidote",
+      "category": "Consumables"
+    },
+    "honey-elixir": {
+      "sheet": "items-supplies-v1",
+      "index": 3,
+      "name": "Honey elixir",
+      "category": "Consumables"
+    },
+    "dream-draught": {
+      "sheet": "items-supplies-v1",
+      "index": 4,
+      "name": "Dream draught",
+      "category": "Consumables"
+    },
+    "frost-phial": {
+      "sheet": "items-supplies-v1",
+      "index": 5,
+      "name": "Frost phial",
+      "category": "Consumables"
+    },
+    "ember-oil": {
+      "sheet": "items-supplies-v1",
+      "index": 6,
+      "name": "Ember oil",
+      "category": "Consumables"
+    },
+    "dew-vial": {
+      "sheet": "items-supplies-v1",
+      "index": 7,
+      "name": "Dew vial",
+      "category": "Consumables"
+    },
+    "bread-loaf": {
+      "sheet": "items-supplies-v1",
+      "index": 8,
+      "name": "Bread loaf",
+      "category": "Food"
+    },
+    "apple": {
+      "sheet": "items-supplies-v1",
+      "index": 9,
+      "name": "Apple",
+      "category": "Food"
+    },
+    "pear": {
+      "sheet": "items-supplies-v1",
+      "index": 10,
+      "name": "Pear",
+      "category": "Food"
+    },
+    "blue-berries": {
+      "sheet": "items-supplies-v1",
+      "index": 11,
+      "name": "Blue berries",
+      "category": "Food"
+    },
+    "mushroom-skewer": {
+      "sheet": "items-supplies-v1",
+      "index": 12,
+      "name": "Mushroom skewer",
+      "category": "Food"
+    },
+    "grilled-fish": {
+      "sheet": "items-supplies-v1",
+      "index": 13,
+      "name": "Grilled fish",
+      "category": "Food"
+    },
+    "cheese": {
+      "sheet": "items-supplies-v1",
+      "index": 14,
+      "name": "Cheese",
+      "category": "Food"
+    },
+    "honey-jar": {
+      "sheet": "items-supplies-v1",
+      "index": 15,
+      "name": "Honey jar",
+      "category": "Food"
+    },
+    "herb-sprig": {
+      "sheet": "items-supplies-v1",
+      "index": 16,
+      "name": "Herb sprig",
+      "category": "Herbs"
+    },
+    "sunpetal": {
+      "sheet": "items-supplies-v1",
+      "index": 17,
+      "name": "Sunpetal",
+      "category": "Herbs"
+    },
+    "nightbloom": {
+      "sheet": "items-supplies-v1",
+      "index": 18,
+      "name": "Nightbloom",
+      "category": "Herbs"
+    },
+    "snowbell": {
+      "sheet": "items-supplies-v1",
+      "index": 19,
+      "name": "Snowbell",
+      "category": "Herbs"
+    },
+    "grain-sheaf": {
+      "sheet": "items-supplies-v1",
+      "index": 20,
+      "name": "Grain sheaf",
+      "category": "Herbs"
+    },
+    "pale-root": {
+      "sheet": "items-supplies-v1",
+      "index": 21,
+      "name": "Pale root",
+      "category": "Herbs"
+    },
+    "tea-leaves": {
+      "sheet": "items-supplies-v1",
+      "index": 22,
+      "name": "Tea leaves",
+      "category": "Herbs"
+    },
+    "moss-clump": {
+      "sheet": "items-supplies-v1",
+      "index": 23,
+      "name": "Moss clump",
+      "category": "Herbs"
+    },
+    "ruby-cap": {
+      "sheet": "items-supplies-v1",
+      "index": 24,
+      "name": "Ruby cap",
+      "category": "Foraging"
+    },
+    "morel": {
+      "sheet": "items-supplies-v1",
+      "index": 25,
+      "name": "Morel",
+      "category": "Foraging"
+    },
+    "witchlight-mushroom": {
+      "sheet": "items-supplies-v1",
+      "index": 26,
+      "name": "Witchlight mushroom",
+      "category": "Foraging"
+    },
+    "truffle": {
+      "sheet": "items-supplies-v1",
+      "index": 27,
+      "name": "Truffle",
+      "category": "Foraging"
+    },
+    "acorn": {
+      "sheet": "items-supplies-v1",
+      "index": 28,
+      "name": "Acorn",
+      "category": "Foraging"
+    },
+    "pinecone": {
+      "sheet": "items-supplies-v1",
+      "index": 29,
+      "name": "Pinecone",
+      "category": "Foraging"
+    },
+    "worldseed": {
+      "sheet": "items-supplies-v1",
+      "index": 30,
+      "name": "Worldseed",
+      "category": "Foraging"
+    },
+    "chestnut": {
+      "sheet": "items-supplies-v1",
+      "index": 31,
+      "name": "Chestnut",
+      "category": "Foraging"
+    },
+    "mossiron-ore": {
+      "sheet": "items-supplies-v1",
+      "index": 32,
+      "name": "Mossiron ore",
+      "category": "Materials"
+    },
+    "copper-ore": {
+      "sheet": "items-supplies-v1",
+      "index": 33,
+      "name": "Copper ore",
+      "category": "Materials"
+    },
+    "iron-ore": {
+      "sheet": "items-supplies-v1",
+      "index": 34,
+      "name": "Iron ore",
+      "category": "Materials"
+    },
+    "coal": {
+      "sheet": "items-supplies-v1",
+      "index": 35,
+      "name": "Coal",
+      "category": "Materials"
+    },
+    "amber-shard": {
+      "sheet": "items-supplies-v1",
+      "index": 36,
+      "name": "Amber shard",
+      "category": "Materials"
+    },
+    "blue-crystal": {
+      "sheet": "items-supplies-v1",
+      "index": 37,
+      "name": "Blue crystal",
+      "category": "Materials"
+    },
+    "amethyst": {
+      "sheet": "items-supplies-v1",
+      "index": 38,
+      "name": "Amethyst",
+      "category": "Materials"
+    },
+    "moonstone": {
+      "sheet": "items-supplies-v1",
+      "index": 39,
+      "name": "Moonstone",
+      "category": "Materials"
+    },
+    "bronze-key": {
+      "sheet": "items-supplies-v1",
+      "index": 40,
+      "name": "Bronze key",
+      "category": "Spellcraft"
+    },
+    "silver-key": {
+      "sheet": "items-supplies-v1",
+      "index": 41,
+      "name": "Silver key",
+      "category": "Spellcraft"
+    },
+    "briar-key": {
+      "sheet": "items-supplies-v1",
+      "index": 42,
+      "name": "Briar key",
+      "category": "Spellcraft"
+    },
+    "bone-key": {
+      "sheet": "items-supplies-v1",
+      "index": 43,
+      "name": "Bone key",
+      "category": "Spellcraft"
+    },
+    "sealed-scroll": {
+      "sheet": "items-supplies-v1",
+      "index": 44,
+      "name": "Sealed scroll",
+      "category": "Spellcraft"
+    },
+    "rune-scroll": {
+      "sheet": "items-supplies-v1",
+      "index": 45,
+      "name": "Rune scroll",
+      "category": "Spellcraft"
+    },
+    "blue-spellbook": {
+      "sheet": "items-supplies-v1",
+      "index": 46,
+      "name": "Blue spellbook",
+      "category": "Spellcraft"
+    },
+    "purple-grimoire": {
+      "sheet": "items-supplies-v1",
+      "index": 47,
+      "name": "Purple grimoire",
+      "category": "Spellcraft"
+    },
+    "amber-coins": {
+      "sheet": "items-supplies-v1",
+      "index": 48,
+      "name": "Amber coins",
+      "category": "Treasure"
+    },
+    "sun-medallion": {
+      "sheet": "items-supplies-v1",
+      "index": 49,
+      "name": "Sun medallion",
+      "category": "Treasure"
+    },
+    "moon-coin": {
+      "sheet": "items-supplies-v1",
+      "index": 50,
+      "name": "Moon coin",
+      "category": "Treasure"
+    },
+    "wooden-chest": {
+      "sheet": "items-supplies-v1",
+      "index": 51,
+      "name": "Wooden chest",
+      "category": "Treasure"
+    },
+    "iron-strongbox": {
+      "sheet": "items-supplies-v1",
+      "index": 52,
+      "name": "Iron strongbox",
+      "category": "Treasure"
+    },
+    "trail-map": {
+      "sheet": "items-supplies-v1",
+      "index": 53,
+      "name": "Trail map",
+      "category": "Treasure"
+    },
+    "sealed-letter": {
+      "sheet": "items-supplies-v1",
+      "index": 54,
+      "name": "Sealed letter",
+      "category": "Treasure"
+    },
+    "field-notebook": {
+      "sheet": "items-supplies-v1",
+      "index": 55,
+      "name": "Field notebook",
+      "category": "Treasure"
+    },
+    "firebird-feather": {
+      "sheet": "items-supplies-v1",
+      "index": 56,
+      "name": "Firebird feather",
+      "category": "Curios"
+    },
+    "snow-plume": {
+      "sheet": "items-supplies-v1",
+      "index": 57,
+      "name": "Snow plume",
+      "category": "Curios"
+    },
+    "butterfly-wing": {
+      "sheet": "items-supplies-v1",
+      "index": 58,
+      "name": "Butterfly wing",
+      "category": "Curios"
+    },
+    "lizard-scale": {
+      "sheet": "items-supplies-v1",
+      "index": 59,
+      "name": "Lizard scale",
+      "category": "Curios"
+    },
+    "antler-fragment": {
+      "sheet": "items-supplies-v1",
+      "index": 60,
+      "name": "Antler fragment",
+      "category": "Curios"
+    },
+    "tiny-skull": {
+      "sheet": "items-supplies-v1",
+      "index": 61,
+      "name": "Tiny skull",
+      "category": "Curios"
+    },
+    "spiral-shell": {
+      "sheet": "items-supplies-v1",
+      "index": 62,
+      "name": "Spiral shell",
+      "category": "Curios"
+    },
+    "forest-egg": {
+      "sheet": "items-supplies-v1",
+      "index": 63,
+      "name": "Forest egg",
+      "category": "Curios"
+    }
+  }
+}

@@ -6,6 +6,7 @@ on:
     paths:
       - 'wizard-combat/**'
       - 'hollow-pixel/**'
+      - 'robot-rpg/**'
       - 'game-picker/**'
       - 'scripts/**'
       - '.github/workflows/pages.yml'
@@ -35,6 +36,7 @@ jobs:
           cache-dependency-path: |
             wizard-combat/package-lock.json
             hollow-pixel/package-lock.json
+            robot-rpg/package-lock.json
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Install dependencies
@@ -52,7 +54,16 @@ jobs:
       - name: Build pixel game
         run: npm run build
         working-directory: hollow-pixel
-      - name: Assemble game picker and both games
+      - name: Install Robot RPG dependencies
+        run: npm ci
+        working-directory: robot-rpg
+      - name: Test Robot RPG gameplay
+        run: npm test
+        working-directory: robot-rpg
+      - name: Build Robot RPG
+        run: npm run build
+        working-directory: robot-rpg
+      - name: Assemble game picker and all three games
         run: node scripts/build-site.mjs
         working-directory: .
       - name: Install browser for publishing checks

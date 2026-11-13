@@ -1,0 +1,78 @@
+{
+  "tool": "Built-in image_gen.imagegen",
+  "generated": "2026-11-06",
+  "file": "public/assets/wildlife-expansion.png",
+  "grid": [
+    8,
+    8
+  ],
+  "cells": 64,
+  "newSpecies": 24,
+  "regionalVariants": 8,
+  "posesPerDesign": 2,
+  "note": "The selected second output adds padding to every cell. The source PNG is copied intact; no color removal, pixelation filter, resampling or connected-component cropping was applied. Runtime cell bounds preserve all opaque pieces, including detached extremities.",
+  "sourceLore": [
+    "../wizard-combat/docs/lore/monster-design.md",
+    "../wizard-combat/docs/lore/world-lore.md",
+    "../wizard-combat/docs/lore/terrain-design.md"
+  ],
+  "localAdaptations": "The shared catalog leaves several anatomies open. Grovefang is a local Groveflower host; Corpse Borer is a local giant-corpse specialist. Regional forms are local art variants, not new canonical rules. Bodies express the ecological briefs; advanced time, incubation and succession behavior is not implied by art alone.",
+  "steps": [
+    {
+      "mode": "generate",
+      "transparent_background": true,
+      "source": "C:/Users/kallek/.codex/generated_images/01a1b2bd-156a-7431-80de-b074d135201a/exec-b322a908-7aee-4c50-8af3-c9a8cbc3c7a2.png",
+      "status": "superseded by padding correction",
+      "prompt": "Use case: stylized-concept\nAsset type: one production sprite atlas for an original overhead pixel-art RPG, The Hollow.\nCreate EXACTLY 64 separate full-body monster/animal sprites arranged in a STRICT REGULAR 8 COLUMNS x 8 ROWS grid on a square TRANSPARENT canvas. Exactly eight sprites in every row. All cells identical. No captions, text, cell borders, grid lines, scenery, ground tiles or decorative frame.\nSTYLE: charming strange creatures with native chunky 32x32 to 40x40 pixel designs, visually enlarged with crisp square pixel clusters. Dark 1-native-pixel outlines, 3 or 4 flat shades per material, small limited harmonious woodland palette. Classic 16-bit overhead RPG sprites with a consistent three-quarter overhead camera, visible tops and fronts, bodies facing southeast. Clear small silhouettes and readable animal faces; avoid realistic detail, tiny stippling, smooth painting, gradients or 3D rendering. No postprocessed blurry illustration. Like lovingly authored tiny pixel sprites.\nFRAMING: Entire creature visible in each cell including head, feet, horns, tail and wings. Each body fits within the central 68% of its cell, with minimum16% transparent padding on ALL sides. Consistent ground baseline at82% cell height. Nothing touches a cell edge. Tall antlers and curling tails must stay within the padded cell. One complete figure per cell.\n\nROWS1-4 are32 distinct designs in this exact left-to-right order:\nROW1:\n1 Grovefang: low slate-blue feline hunter with several peach flowers and green leaves rooted along its moving shoulders.\n2 Overgrowth Stalker: crouching dark olive wolf-lizard, roots growing through skin and a heavy uneven fern mantle, visible face and four legs.\n3 Pollen Hunter: pale tan long-eared mantis-cat with a broad protective green brow visor and amber double eyelids.\n4 Cuphorn: stout small green-grey ungulate with two huge bowl-shaped curved horns holding water and reeds.\n5 Sap Drinker: honey-brown squat lizard with striped warning neck, long curled red tongue and sticky amber sap on its chin.\n6 Alarm Caller: upright ochre bird with a large flared red throat pouch, small wings and long toes.\n7 Veilspinner: silver-lilac spider with translucent broad mist-catching fan membranes between eight legs, not a generic black spider.\n8 Ridgeback Burrower: blunt-nosed brown mole-beast with turquoise porous stone ridges on its back and huge digging claws.\nROW2:\n1 Burial Stag: weathered dark deer carrying small living green saplings and hanging roots in its branching antlers.\n2 Uphill Carrier: stocky rusty goat-bear carrying a bundle of roots in its mouth, strong forequarters and moss on its back.\n3 Scent Thief: small cream-and-russet long-tailed mammal with furry oversized cheek pouches, alert nose, low mischievous posture.\n4 Rootknife Follower: little ragged mauve scavenger bird with a long thin beak, large yellow eyes and spindly legs.\n5 Corpse Borer: big ivory-and-rust plated beetle with shovel mandibles and cream fungal nodules on its shell.\n6 Velvet Anchor: round charcoal tortoise with a deep velvety teal moss garden growing on its rounded rock shell, tiny pale head.\n7 Eggrunner: slender tawny six-legged ferret with broad silver temporal whiskers, one striped egg cradled in its forepaws.\n8 Gradient Broodling: threatening purple-black young predatory reptile with long scythe forelimbs, ivory facial mask and fragments of a violet-banded eggshell at its tail.\nROW3:\n1 Tapping Hunter: pale icy-blue long-legged insect-fox with long black tapping forelimbs and pointed triangular ears.\n2 Snowbell Grazer: round white woolly small yak with wide listening ears and two blue shovel tusks, snowbell flowers tucked in its fur.\n3 Cache Finder: little dark blue-grey arctic mustelid with an ivory muzzle and bushy white-tipped tail, carrying a frozen bone.\n4 Cold Garden Grazer: broad shaggy cream muskox with miniature cyan fungi and frost-covered red berries growing in its long fur.\n5 Stillglass: small translucent jade crystalline crab with six fan-shaped filter limbs and gold debris inside its glass body.\n6 Threshold Heron: elegant lilac-and-white heron, one leg raised, a dark blue crescent crest and warm yellow long beak.\n7 Duskcoil: coiled indigo serpent with copper scale rings, blunt leaf-shaped head and pale featherlike neck frill.\n8 Glassbrood: obsidian-and-turquoise salamander with swollen translucent amber egg sacs along its back, glowing mineral spots.\nROW4: regional variants of existing Hollow animals, clearly distinct from their ordinary versions:\n1 pale bark-armored Barkjaw, six short spider-mouth limbs, mossy cream plates and tiny russet horns;\n2 Rootknife with pale birch-striped long green lizard body and hooked mantis forelegs;\n3 Mantleback tortoise with a broad cluster of lilac shelf mushrooms instead of orange ones;\n4 Rime Antler deer with dark grey winter coat, wide ice antlers and reddish hanging antler gardens;\n5 Snowkeel broad pale snow-swimming beast with a split dorsal blue fin and short digging paddles;\n6 Ventback basalt-armored lizard with three squat copper-red smoking dorsal chimneys;\n7 Boundary Scavenger with rusty banded long tail, six legs, one blue throat sac and one amber throat sac;\n8 cream-and-lilac Petalmaw orchid monster on dark root feet, pale toothed flower-face.\n\nROWS5-8 repeat EXACTLY the designs in ROWS1-4 respectively, same order, same scale and silhouettes, with one SMALL second animation pose: a step forward, shifted feet, a slight head turn, opening wings or a feeding posture. These are ANIMATION PAIRS of the first32, not new unrelated species. Keep all markings, clothing-free animal anatomy and colors consistent between pairs. Row5 is row1 walking; row6 is row2 walking; row7 is row3 walking; row8 is row4 walking.\nStrict64-cell atlas, transparent outside sprites, full bodies preserved, chunky pixel artwork and exact 8x8 alignment take priority over fine detail."
+    },
+    {
+      "mode": "edit",
+      "transparent_background": true,
+      "referenced_image_paths": [
+        "C:/Users/kallek/.codex/generated_images/01a1b2bd-156a-7431-80de-b074d135201a/exec-b322a908-7aee-4c50-8af3-c9a8cbc3c7a2.png"
+      ],
+      "source": "C:/Users/kallek/.codex/generated_images/01a1b2bd-156a-7431-80de-b074d135201a/exec-295616ee-c607-4a4e-a02a-2c7c8680eeaf.png",
+      "status": "selected",
+      "prompt": "Edit this sprite atlas with one targeted layout correction. Preserve exactly the same64 creatures, colors, chunky pixel-art style and pairing order. Keep EXACTLY8 columns and8 rows with equal cells, transparent background. Reduce EACH individual creature to72% of its current dimensions around the center of its own cell, so every head, horn, tail, foot and wing sits comfortably inside its cell, with at least15% transparent padding on every side. Do not scale the whole atlas as one image; independently shrink the contents of every cell while keeping the cells the same size and grid in the same position. All complete bodies must remain visible. If a horn, reed, tail or foot previously touched a cell boundary, complete its contour naturally. Final baseline at82% of each cell height. No sprite may cross or touch a cell boundary. No new objects, no scenery, no labels, no grid lines. Preserve the transparent canvas, pixel edges and recognizable anatomy. Priority: clean isolated full silhouettes with comfortable padding in a strict8x8 grid."
+    }
+  ],
+  "mapping": {
+    "rows1to3": [
+      "grovefang",
+      "stalker",
+      "pollenhunter",
+      "cuphorn",
+      "sapdrinker",
+      "alarmcaller",
+      "veilspinner",
+      "ridgeback",
+      "burialstag",
+      "uphillcarrier",
+      "scentthief",
+      "rootfollower",
+      "corpseborer",
+      "velvetanchor",
+      "eggrunner",
+      "broodling",
+      "tappinghunter",
+      "snowgrazer",
+      "cachefinder",
+      "coldgarden",
+      "stillglass",
+      "thresholdheron",
+      "duskcoil",
+      "glassbrood"
+    ],
+    "row4": [
+      "Pale Barkjaw",
+      "Birch Rootknife",
+      "Violet Mantleback",
+      "Slate Rime Antler",
+      "Splitfin Snowkeel",
+      "Copper Ventback",
+      "Ringtail Scavenger",
+      "Pale Petalmaw"
+    ],
+    "rows5to8": "Matching second poses; add32 to the first pose index."
+  }
+}

@@ -1,0 +1,3 @@
+.char-tabs{display:flex;gap:5px}.char-tabs>button{flex:1;justify-content:center;min-width:0;padding-inline:9px}
+
+@media(max-width:600px){.char-tabs>button{font-size:12px;padding-inline:4px;gap:5px}.char-tabs .gi{width:17px;height:17px}.spell-inspect{padding:10px}.spell-inspect>header{align-items:flex-start}.spell-inspect strong{font-size:16px}.spell-focus{flex-wrap:wrap}.spell-focus>button{margin-left:auto}.known-spells{grid-template-columns:repeat(auto-fit,minmax(78px,1fr))}.spell-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.spell-metric{grid-template-columns:15px 1fr;padding:7px 5px;gap:4px}.spell-metric>b{font-size:14px}.spell-metric>svg{width:15px;height:15px}}

@@ -1,0 +1,30 @@
+{
+  "name": "robot-rpg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sprites": "node scripts/export-item-manifest.mjs",
+    "forge:bridge": "node scripts/forge-bridge.mjs",
+    "forge:validate-agent": "node scripts/validate-forge-agent.mjs",
+    "prebuild": "npm run sprites",
+    "dev": "vite --host 127.0.0.1 --port 5177 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4177",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "playwright test",
+    "balance": "node scripts/balance.mjs",
+    "balance:background": "node scripts/start-balance.mjs",
+    "balance:kiting": "node scripts/check-kiting.mjs",
+    "balance:exploits": "node scripts/exploit-audit.mjs",
+    "balance:opening": "node scripts/check-opening.mjs",
+    "balance:progression": "node scripts/check-progression.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13"
+  }
+}

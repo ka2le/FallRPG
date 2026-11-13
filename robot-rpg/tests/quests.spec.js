@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+test.beforeEach(async({page})=>{await page.goto('/?test');await page.evaluate(()=>localStorage.clear());await page.reload();await page.waitForFunction(()=>!!window.__hollow);});
+test('quest tracker, progress feedback, journal cards, map focus and market work together',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  // Nothing is listed until Rowan has actually told you about his problem.
+  await expect(page.locator('#adventure-status .qt')).toHaveCount(0);
+  await page.evaluate(()=>window.__hollow.ui.open('rowan'));await page.keyboard.press('Escape');
+  await expect(page.locator('#adventure-status .qt-step')).toContainText('Speak to Rowan');await expect(page.locator('#adventure-status .qt-title .qt-glyph')).toHaveText('!');
+  await page.evaluate(()=>{const g=window.__hollow.game;g.questAction('herd');g.player.invulnerable=999;g.autoAttack=false;});
+  await expect(page.locator('#adventure-status .qt-step .qh-mob')).toHaveText('Briar Seedlings');await expect(page.locator('#adventure-status .qt-count')).toHaveText('0/3');
+  await page.evaluate(()=>{const g=window.__hollow.game;g.hurt(g.creatures.find(c=>c.quest==='herd'),999);});
+  await expect(page.locator('#quest-pop.progress.shown')).toBeVisible();await expect(page.locator('#adventure-status .qt-count')).toHaveText('1/3');
+  expect(await page.evaluate(()=>window.__hollow.game.effects.some(e=>e.type==='float'&&e.text==='1/3'))).toBe(true);
+  await page.evaluate(()=>{const g=window.__hollow.game;for(const c of g.creatures.filter(c=>c.quest==='herd'))g.hurt(c,999);});
+  await expect(page.locator('#quest-pop.ready.shown')).toContainText('Return to Rowan');
+  await page.evaluate(()=>{const g=window.__hollow.game;g.questAction('herd');g.player.coins=200;g.player.level=4;g.recalculate();});
+  await page.keyboard.press('j');await expect(page.locator('.quest-entry.qc[data-quest="briar-road"]')).toHaveCount(0);await page.keyboard.press('Escape');
+  await page.evaluate(()=>window.__hollow.ui.open('rowan'));await expect(page.locator('.quest-entry.qc[data-quest="briar-road"] [data-quest-action]')).toBeVisible();
+  await page.locator('[data-quest-action="briar-road"]').click();await expect(page.locator('#quest-pop.new.shown')).toContainText('Reopen the Briar Road');
+  await page.keyboard.press('j');await page.locator('.quest-entry[data-quest="briar-road"] [data-map-quest]').click();
+  await expect(page.getByRole('dialog',{name:'Journal'})).toBeVisible();await expect(page.locator('[data-journal-tab="map"]')).toHaveAttribute('aria-selected','true');await expect(page.locator('#atlas-canvas')).toBeVisible();const view=await page.evaluate(()=>window.__hollow.renderer.mapView);expect(view.zoom).toBe(4);
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>window.__hollow.ui.open('market'));await expect(page.locator('.shop-window')).toBeVisible();
+  const id=await page.locator('.shop-tile:not(.owned):not(.locked)').first().getAttribute('data-shop-pick');
+  await page.locator(`[data-shop-pick="${id}"]`).click();await page.locator(`[data-gear-buy="${id}"]`).click();
+  expect(await page.evaluate(id=>window.__hollow.game.inventory.includes(id),id)).toBe(true);
+  await page.locator(`[data-shop-equip="${id}"]`).click();expect(await page.evaluate(id=>!!window.__hollow.game.wornSlot(id),id)).toBe(true);
+  await page.locator('[data-buy="coins"]').click();
+  expect(errors).toEqual([]);
+});

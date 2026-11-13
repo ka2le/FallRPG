@@ -55,7 +55,7 @@ try {
   const screenshots = new URL('../hollow-pixel/artifacts/', import.meta.url);
   await mkdir(screenshots, { recursive: true });
   await page.goto(base);
-  assert.equal(await page.locator('.games a').count(), 2);
+  assert.equal(await page.locator('.games a').count(), 3);
   await checkFullscreen();
   // Browser-driven exits also have to restore the button's state.
   await page.getByRole('button', { name: 'Enter fullscreen' }).click();
@@ -96,10 +96,17 @@ try {
   await back.focus();
   await page.keyboard.press('Enter');
   await page.waitForURL(base);
+  await page.locator('a[href="./robot-rpg/"]').click();
+  await page.locator('#loading.hidden').waitFor({ state: 'attached', timeout: 30000 });
+  assert.equal(await page.title(), 'Robot RPG · The Hollow');
+  await page.screenshot({ path: fileURLToPath(new URL('game-picker-robot.png', screenshots)) });
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Choose another game' }).click();
+  await page.waitForURL(base);
   await page.goto(`${base}bestiary.html?preview=1#seedling`);
   await page.waitForURL(`${base}wizard-combat/bestiary.html?preview=1#seedling`);
   assert.deepEqual(errors, [], `Browser errors: ${errors.join('\n')}`);
-  console.log('PASS: fullscreen entry/exit on all three screens, picker, narrow layout, both production games, keyboard return, assets and legacy bestiary redirect under /FallRPG/.');
+  console.log('PASS: fullscreen entry/exit, picker, narrow layout, all three production games, keyboard return, assets and legacy bestiary redirect under /FallRPG/.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
